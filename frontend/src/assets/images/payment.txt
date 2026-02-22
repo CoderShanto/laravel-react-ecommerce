@@ -1,0 +1,83 @@
+Backend: composer require stripe/stripe-php
+Frontend: npm i @stripe/react-stripe-js
+
+//**************************** Checkout form *******************************
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+const stripePromise = loadStripe('PBLIC_KEY');
+
+<Elements stripe={stripePromise}>   
+    <CheckoutForm/>
+</Elements>
+//**************************** Checkout form *******************************
+
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+// Stripe
+const [loading, setLoading] = useState(false);
+const stripe = useStripe();
+const elements = useElements();
+const [paymentStatus, setPaymentStatus] = useState("");
+
+
+// Fetch the client secret from the server
+const response = await fetch(`${apiUrl}/create-payment-intent`, {
+    method: "POST",
+    headers: {
+        'Content-type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization' : `Bearer ${userToken()}`
+        },
+        body: JSON.stringify({ amount: grandTotal()*100 }), 
+});
+
+const result = await response.json();
+
+if (!result.clientSecret) {
+    setPaymentStatus("Unable to process payment. Please try again.");
+    setLoading(false);
+    return;
+}
+
+// Ensure Stripe and Elements are loaded
+if (!stripe || !elements) {
+    setPaymentStatus("Stripe is not ready. Please try again later.");
+    setLoading(false);
+    return;
+}
+
+const clientSecret = result.clientSecret;
+const cardElement = elements.getElement(CardElement);
+
+const paymentResult = await stripe.confirmCardPayment(clientSecret, {
+    payment_method: {
+        card: cardElement,
+        billing_details: {
+            name: data.name,
+            email: data.email,
+            address: {
+                line1: data.address,
+                city: data.city,
+                state: data.state,
+                postal_code: data.zip,
+            },
+        },
+    },
+});
+
+if (paymentResult.error) {
+    setPaymentStatus(`Payment failed: ${paymentResult.error.message}`);
+} else if (paymentResult.paymentIntent.status === "succeeded") {
+    saveOrder(data,'paid');
+    setPaymentStatus("Payment successful!");
+}
+
+ {
+    paymentMethod == "stripe" && <div className='border p-3'>
+                                    <CardElement />
+                                </div>
+}
+
+{paymentStatus && <p className='alert alert-info mt-3'>{paymentStatus}</p>}
+
+
