@@ -11,8 +11,9 @@ import Layout from "./common/Layout";
 import ProductImg from "../assets/images/eight.jpg";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import AutoCompleteSearch from "./common/AutoCompleteSearch";
-import { api } from "./common/http";
+import { api,baseUrl } from "./common/http";
 import { Rating } from "react-simple-star-rating";
+
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -25,8 +26,7 @@ const Shop = () => {
   const urlMax = searchParams.get("max_price");
 
   // (You can remove these if api/baseUrl already exists in your http.js)
-  const apiUrl = "http://localhost:8000/api";
-  const baseUrl = "http://localhost:8000";
+ 
 
   const [allProducts, setAllProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -145,19 +145,15 @@ const Shop = () => {
       try {
         setLoading(true);
 
-        const [catRes, brandRes, prodRes] = await Promise.all([
-          fetch(`${apiUrl}/get-categories`, { headers: { Accept: "application/json" } }),
-          fetch(`${apiUrl}/get-brands`, { headers: { Accept: "application/json" } }),
-          fetch(`${apiUrl}/get-products`, { headers: { Accept: "application/json" } }),
-        ]);
+       const [catRes, brandRes, prodRes] = await Promise.all([
+  api.get("/get-categories"),
+  api.get("/get-brands"),
+  api.get("/get-products"),
+]);
 
-        const catJson = await catRes.json();
-        const brandJson = await brandRes.json();
-        const prodJson = await prodRes.json();
-
-        setCategories(catJson.status === 200 ? catJson.data || [] : []);
-        setBrands(brandJson.status === 200 ? brandJson.data || [] : []);
-        setAllProducts(prodJson.status === 200 ? prodJson.data || [] : []);
+setCategories(catRes.data?.status === 200 ? catRes.data.data || [] : []);
+setBrands(brandRes.data?.status === 200 ? brandRes.data.data || [] : []);
+setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
       } catch (e) {
         console.error(e);
         setCategories([]);
