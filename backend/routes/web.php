@@ -14,3 +14,9 @@ Route::get('/__migrate', function () {
 Route::get('/__db', function () {
     return DB::select('SELECT 1 as ok');
 });
+Route::get('/', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'Laravel backend running'
+    ]);
+});
