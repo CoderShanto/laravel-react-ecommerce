@@ -1,19 +1,32 @@
 import axios from "axios";
 
-export const baseUrl = "http://localhost:8000";
+/* =========================
+   ✅ Base URL (Vercel/Production + Local Dev)
+   - In Vercel: set VITE_API_URL
+   - Locally: you can set VITE_API_URL in frontend/.env
+========================= */
+export const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
 export const apiUrl = `${baseUrl}/api`;
 
 /* =========================
    ✅ Helpers
 ========================= */
 export const userToken = () => {
-  const data = JSON.parse(localStorage.getItem("userInfo"));
-  return data?.token || null;
+  try {
+    const data = JSON.parse(localStorage.getItem("userInfo"));
+    return data?.token || null;
+  } catch {
+    return null;
+  }
 };
 
 export const adminToken = () => {
-  const data = JSON.parse(localStorage.getItem("adminInfo"));
-  return data?.token || null;
+  try {
+    const data = JSON.parse(localStorage.getItem("adminInfo"));
+    return data?.token || null;
+  } catch {
+    return null;
+  }
 };
 
 /* =========================
@@ -28,7 +41,9 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = userToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });
 
@@ -44,6 +59,8 @@ export const adminApi = axios.create({
 
 adminApi.interceptors.request.use((config) => {
   const token = adminToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
 });

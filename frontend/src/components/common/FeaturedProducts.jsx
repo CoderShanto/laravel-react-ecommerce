@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ProductImg from "../../assets/images/eleven.jpg";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../common/http"; // ✅ adjust path if needed
+import { api, baseUrl } from "../common/http"; // ✅ adjust path if needed
 import { Rating } from "react-simple-star-rating";
 
 const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
@@ -10,8 +10,7 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const apiUrl = "http://localhost:8000/api";
-  const baseUrl = "http://localhost:8000";
+
 
   // ✅ ratings cache
   const [ratingsMap, setRatingsMap] = useState({});
@@ -61,28 +60,24 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
   }, [limit]);
 
   const fetchFeaturedProducts = async () => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const res = await fetch(`${apiUrl}/get-featured-products?limit=${limit}`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
+    const res = await api.get(`/get-featured-products?limit=${limit}`);
+    const result = res.data;
 
-      const result = await res.json();
-
-      if (res.ok && result?.status === 200) {
-        setProducts(result.data || []);
-      } else {
-        setProducts([]);
-      }
-    } catch (error) {
-      console.error("Error fetching featured products:", error);
+    if (result?.status === 200) {
+      setProducts(result.data || []);
+    } else {
       setProducts([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching featured products:", error);
+    setProducts([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getProductImage = (product) => {
     if (product?.image) return `${baseUrl}/uploads/products/small/${product.image}`;

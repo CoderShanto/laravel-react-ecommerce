@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ProductImg from "../../assets/images/eight.jpg";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../common/http"; // ✅ adjust path if needed
+import { api, baseUrl } from "../common/http"; // ✅ adjust path if needed
 import { Rating } from "react-simple-star-rating";
 
 const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
@@ -10,8 +10,7 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const apiUrl = "http://localhost:8000/api";
-  const baseUrl = "http://localhost:8000";
+  
 
   // ✅ ratings cache: ratingsMap[productId] = { avg, total }
   const [ratingsMap, setRatingsMap] = useState({});
@@ -60,26 +59,25 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
     // eslint-disable-next-line
   }, [limit]);
 
-  const fetchPopular = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`${apiUrl}/products/popular?limit=${limit}`, {
-        headers: { Accept: "application/json" },
-      });
-      const result = await res.json();
+ const fetchPopular = async () => {
+  try {
+    setLoading(true);
 
-      if (res.ok && result?.status === 200) {
-        setItems(result.data || []);
-      } else {
-        setItems([]);
-      }
-    } catch (e) {
-      console.error("Popular products fetch error:", e);
+    const res = await api.get(`/products/popular?limit=${limit}`);
+    const result = res.data;
+
+    if (result?.status === 200) {
+      setItems(result.data || []);
+    } else {
       setItems([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (e) {
+    console.error("Popular products fetch error:", e);
+    setItems([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getProduct = (row) => row?.product || {};
 
