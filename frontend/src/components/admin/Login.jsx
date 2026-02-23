@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import Layout from "../common/Layout";
 import { useForm } from "react-hook-form";
-import { apiUrl } from "../common/http";
+import { adminApi  } from "../common/http";
 import { ToastContainer, toast } from 'react-toastify';
 import { useNavigate } from "react-router-dom";
 import { AdminAuthContext } from "../context/AdminAuth";
@@ -19,35 +19,32 @@ const Login = () => {
 
   const navigate = useNavigate()
 
-  const onSubmit = async (data) => {
-    console.log(data)
-    const res = await fetch(`${apiUrl}/admin/login`,{
-    method: 'POST',
-    headers:{
-        'Content-type' : 'application/json'
-    },
-    body: JSON.stringify(data)
+const onSubmit = async (data) => {
+  try {
+    const res = await adminApi.post("/admin/login", data);
+    const result = res.data;
 
-  }).then(res => res.json())
-  .then(result => {
-    console.log(result)
+    if (result?.status === 200) {
+      const adminInfo = {
+        token: result.token,
+        id: result.id,
+        name: result.name,
+      };
 
-    if(result.status == 200){
-        
-        const adminInfo = {
-            token: result.token,
-            id: result.id,
-            name: result.name
-        }
-        localStorage.setItem('adminInfo',JSON.stringify(adminInfo))
-        login(adminInfo)
-        navigate('/admin/dashboard')
-
-    }else{
-        toast.error(result.message)
+      localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
+      login(adminInfo);
+      navigate("/admin/dashboard");
+    } else {
+      toast.error(result?.message || "Login failed");
     }
-  })
-}
+  } catch (err) {
+    console.error(err);
+    toast.error(
+      err?.response?.data?.message ||
+      "Login failed (check email/password or CORS)"
+    );
+  }
+};
 
   return (
     <Layout>
