@@ -38,11 +38,14 @@ const Create = ({ placeholder }) => {
     formState: { errors },
   } = useForm({
     defaultValues: {
+      category: "",
+      brand: "",
       sizes: [],
       discount_type: "",
       discount_value: "",
       is_featured: "",
       status: "",
+      qty: "",
     },
   });
 
@@ -51,7 +54,7 @@ const Create = ({ placeholder }) => {
   const discountValueWatch = watch("discount_value");
 
   const stripHtml = (html) => {
-    const doc = new DOMParser().parseFromString(html, "text/html");
+    const doc = new DOMParser().parseFromString(html || "", "text/html");
     return (doc.body.textContent || "").trim();
   };
 
@@ -124,6 +127,15 @@ const Create = ({ placeholder }) => {
     setDisable(true);
 
     try {
+      const selectedCategory = Number(data.category);
+      const selectedBrand = data.brand ? Number(data.brand) : null;
+
+      if (!selectedCategory) {
+        toast.error("Please select a category");
+        setDisable(false);
+        return;
+      }
+
       setImageUploading(true);
 
       const tempIds = [];
@@ -173,8 +185,13 @@ const Create = ({ placeholder }) => {
         compare_price: data.compare_price ? Number(data.compare_price) : null,
         discount_type,
         discount_value,
-        category_id: Number(data.category),
-        brand_id: data.brand ? Number(data.brand) : null,
+
+        // send both names to avoid backend field mismatch
+        category: selectedCategory,
+        category_id: selectedCategory,
+        brand: selectedBrand,
+        brand_id: selectedBrand,
+
         qty: data.qty ? Number(data.qty) : 0,
         barcode: data.barcode || null,
         short_description: data.short_description || "",
@@ -184,6 +201,8 @@ const Create = ({ placeholder }) => {
         gallery: tempIds,
         sizes: sizeIds,
       };
+
+      console.log("Submitting product payload:", productData);
 
       const res = await fetch(`${apiUrl}/products`, {
         method: "POST",
@@ -197,15 +216,22 @@ const Create = ({ placeholder }) => {
 
       const result = await res.json();
 
-      if (result.status === 200) {
+      if (res.ok && result.status === 200) {
         toast.success(result.message || "Product created");
 
         previews.forEach((p) => URL.revokeObjectURL(p.url));
         navigate("/admin/product");
-      } else if (result.status === 400) {
-        Object.keys(result.errors || {}).forEach((key) => {
-          toast.error(result.errors[key][0]);
-        });
+      } else if (result.status === 400 || result.errors) {
+        if (result.errors) {
+          Object.keys(result.errors).forEach((key) => {
+            const msg = Array.isArray(result.errors[key])
+              ? result.errors[key][0]
+              : result.errors[key];
+            toast.error(msg);
+          });
+        } else {
+          toast.error(result.message || "Validation failed");
+        }
       } else {
         toast.error(result.message || "Something went wrong");
       }
@@ -272,7 +298,6 @@ const Create = ({ placeholder }) => {
       });
 
       const result = await res.json();
-      console.log("Sizes API response:", result);
 
       if (result.status === 200) {
         const sizeData = Array.isArray(result.data) ? result.data : [];
@@ -302,7 +327,6 @@ const Create = ({ placeholder }) => {
     return () => {
       previews.forEach((p) => URL.revokeObjectURL(p.url));
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const computedFinalPrice = useMemo(() => {
@@ -394,7 +418,7 @@ const Create = ({ placeholder }) => {
                         {categories.map((cat) => (
                           <option
                             key={getOptionValue(cat)}
-                            value={getOptionValue(cat)}
+                            value={String(getOptionValue(cat))}
                           >
                             {getOptionLabel(cat)}
                           </option>
@@ -414,7 +438,7 @@ const Create = ({ placeholder }) => {
                         {brands.map((brand) => (
                           <option
                             key={getOptionValue(brand)}
-                            value={getOptionValue(brand)}
+                            value={String(getOptionValue(brand))}
                           >
                             {getOptionLabel(brand)}
                           </option>
