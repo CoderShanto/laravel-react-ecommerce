@@ -19,7 +19,6 @@ const Create = ({ placeholder }) => {
   const [sizes, setSizes] = useState([]);
   const [loadingSizes, setLoadingSizes] = useState(false);
 
-  const [selectedFiles, setSelectedFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [imageUploading, setImageUploading] = useState(false);
 
@@ -42,6 +41,8 @@ const Create = ({ placeholder }) => {
       sizes: [],
       discount_type: "",
       discount_value: "",
+      is_featured: "",
+      status: "",
     },
   });
 
@@ -54,7 +55,6 @@ const Create = ({ placeholder }) => {
     return (doc.body.textContent || "").trim();
   };
 
-  // ✅ Safer label resolver for category/brand/size API response
   const getOptionLabel = (item) => {
     return (
       item?.name ||
@@ -67,7 +67,6 @@ const Create = ({ placeholder }) => {
     );
   };
 
-  // ✅ Safer value resolver
   const getOptionValue = (item) => {
     return item?.id ?? item?.value ?? "";
   };
@@ -84,8 +83,6 @@ const Create = ({ placeholder }) => {
     }));
 
     setPreviews((prev) => [...prev, ...mapped]);
-    setSelectedFiles((prev) => [...prev, ...mapped.map((x) => x.file)]);
-
     e.target.value = "";
   };
 
@@ -93,10 +90,7 @@ const Create = ({ placeholder }) => {
     setPreviews((prev) => {
       const item = prev.find((p) => p.key === key);
       if (item) URL.revokeObjectURL(item.url);
-
-      const next = prev.filter((p) => p.key !== key);
-      setSelectedFiles(next.map((x) => x.file));
-      return next;
+      return prev.filter((p) => p.key !== key);
     });
   };
 
@@ -173,12 +167,22 @@ const Create = ({ placeholder }) => {
       }
 
       const productData = {
-        ...data,
-        description: stripHtml(content),
-        gallery: tempIds,
-        sizes: sizeIds,
+        title: data.title,
+        sku: data.sku,
+        price: Number(data.price),
+        compare_price: data.compare_price ? Number(data.compare_price) : null,
         discount_type,
         discount_value,
+        category_id: Number(data.category),
+        brand_id: data.brand ? Number(data.brand) : null,
+        qty: data.qty ? Number(data.qty) : 0,
+        barcode: data.barcode || null,
+        short_description: data.short_description || "",
+        description: stripHtml(content),
+        status: Number(data.status),
+        is_featured: data.is_featured === "true",
+        gallery: tempIds,
+        sizes: sizeIds,
       };
 
       const res = await fetch(`${apiUrl}/products`, {
@@ -338,7 +342,6 @@ const Create = ({ placeholder }) => {
               <div className="card shadow">
                 <div className="card-body p-4">
                   <div className="row">
-                    {/* Title */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
                         Title <span className="text-danger">*</span>
@@ -358,7 +361,6 @@ const Create = ({ placeholder }) => {
                       )}
                     </div>
 
-                    {/* SKU */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
                         SKU <span className="text-danger">*</span>
@@ -378,7 +380,6 @@ const Create = ({ placeholder }) => {
                       )}
                     </div>
 
-                    {/* Category */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
                         Category <span className="text-danger">*</span>
@@ -406,7 +407,6 @@ const Create = ({ placeholder }) => {
                       )}
                     </div>
 
-                    {/* Brand */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Brand</label>
                       <select {...register("brand")} className="form-control">
@@ -422,7 +422,6 @@ const Create = ({ placeholder }) => {
                       </select>
                     </div>
 
-                    {/* Sizes */}
                     <div className="col-md-12 mb-3">
                       <label className="form-label">Sizes</label>
                       <select
@@ -452,7 +451,6 @@ const Create = ({ placeholder }) => {
                       </small>
                     </div>
 
-                    {/* Price */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
                         Price <span className="text-danger">*</span>
@@ -473,7 +471,6 @@ const Create = ({ placeholder }) => {
                       )}
                     </div>
 
-                    {/* Compare Price */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Compare Price</label>
                       <input
@@ -485,7 +482,6 @@ const Create = ({ placeholder }) => {
                       />
                     </div>
 
-                    {/* Discount Type */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Discount Type</label>
                       <select
@@ -502,7 +498,6 @@ const Create = ({ placeholder }) => {
                       </select>
                     </div>
 
-                    {/* Discount Value */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
                         Discount Value{" "}
@@ -531,7 +526,6 @@ const Create = ({ placeholder }) => {
                       </small>
                     </div>
 
-                    {/* Quantity */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Quantity</label>
                       <input
@@ -542,7 +536,6 @@ const Create = ({ placeholder }) => {
                       />
                     </div>
 
-                    {/* Barcode */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Barcode</label>
                       <input
@@ -553,7 +546,6 @@ const Create = ({ placeholder }) => {
                       />
                     </div>
 
-                    {/* Short Description */}
                     <div className="col-md-12 mb-3">
                       <label className="form-label">Short Description</label>
                       <textarea
@@ -564,7 +556,6 @@ const Create = ({ placeholder }) => {
                       />
                     </div>
 
-                    {/* Description */}
                     <div className="col-md-12 mb-3">
                       <label className="form-label">Description</label>
                       <JoditEditor
@@ -576,7 +567,6 @@ const Create = ({ placeholder }) => {
                       />
                     </div>
 
-                    {/* Is Featured */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
                         Is Featured <span className="text-danger">*</span>
@@ -585,13 +575,11 @@ const Create = ({ placeholder }) => {
                         {...register("is_featured", {
                           required: "Please select featured status",
                         })}
-                        className={`form-control ${
-                          errors.is_featured ? "is-invalid" : ""
-                        }`}
+                        className={`form-control ${errors.is_featured ? "is-invalid" : ""}`}
                       >
                         <option value="">Select</option>
-                        <option value="1">Yes</option>
-                        <option value="0">No</option>
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
                       </select>
                       {errors.is_featured && (
                         <p className="invalid-feedback">
@@ -600,7 +588,6 @@ const Create = ({ placeholder }) => {
                       )}
                     </div>
 
-                    {/* Status */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
                         Status <span className="text-danger">*</span>
@@ -622,7 +609,6 @@ const Create = ({ placeholder }) => {
                       )}
                     </div>
 
-                    {/* Product Images */}
                     <div className="col-md-12 mb-3">
                       <label className="form-label">Product Images</label>
                       <input
