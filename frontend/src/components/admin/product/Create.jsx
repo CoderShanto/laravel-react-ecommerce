@@ -43,6 +43,8 @@ const Create = ({ placeholder }) => {
       discount_value: "",
       is_featured: "",
       status: "",
+      category: "",
+      brand: "",
     },
   });
 
@@ -124,6 +126,24 @@ const Create = ({ placeholder }) => {
     setDisable(true);
 
     try {
+      if (!data.category) {
+        toast.error("Please select a category");
+        setDisable(false);
+        return;
+      }
+
+      if (!data.title?.trim()) {
+        toast.error("Title is required");
+        setDisable(false);
+        return;
+      }
+
+      if (!data.sku?.trim()) {
+        toast.error("SKU is required");
+        setDisable(false);
+        return;
+      }
+
       setImageUploading(true);
 
       const tempIds = [];
@@ -167,20 +187,22 @@ const Create = ({ placeholder }) => {
       }
 
       const productData = {
-        title: data.title?.trim(),
-        sku: data.sku?.trim(),
+        title: data.title.trim(),
+        sku: data.sku.trim(),
         price: Number(data.price),
         compare_price: data.compare_price ? Number(data.compare_price) : null,
         discount_type,
         discount_value,
-        category_id: Number(data.category),
-        brand_id: data.brand ? Number(data.brand) : null,
+
+        // IMPORTANT: send these names because your controller expects them
+        category: Number(data.category),
+        brand: data.brand ? Number(data.brand) : null,
+
         qty: data.qty ? Number(data.qty) : 0,
         barcode: data.barcode?.trim() || null,
         short_description: data.short_description?.trim() || "",
         description: stripHtml(content),
         status: Number(data.status),
-        // send 1/0 to match Laravel + DB check constraint safely
         is_featured: data.is_featured === "1" ? 1 : 0,
         gallery: tempIds,
         sizes: sizeIds,
@@ -390,6 +412,7 @@ const Create = ({ placeholder }) => {
                         {...register("category", {
                           required: "Please select a category",
                         })}
+                        defaultValue=""
                         className={`form-control ${errors.category ? "is-invalid" : ""}`}
                       >
                         <option value="">Select a Category</option>
@@ -411,7 +434,11 @@ const Create = ({ placeholder }) => {
 
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Brand</label>
-                      <select {...register("brand")} className="form-control">
+                      <select
+                        {...register("brand")}
+                        defaultValue=""
+                        className="form-control"
+                      >
                         <option value="">Select a Brand</option>
                         {brands.map((brand) => (
                           <option
@@ -577,6 +604,7 @@ const Create = ({ placeholder }) => {
                         {...register("is_featured", {
                           required: "Please select featured status",
                         })}
+                        defaultValue=""
                         className={`form-control ${errors.is_featured ? "is-invalid" : ""}`}
                       >
                         <option value="">Select</option>
@@ -598,6 +626,7 @@ const Create = ({ placeholder }) => {
                         {...register("status", {
                           required: "Please select a status",
                         })}
+                        defaultValue=""
                         className={`form-control ${errors.status ? "is-invalid" : ""}`}
                       >
                         <option value="">Select a Status</option>
