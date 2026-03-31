@@ -17,11 +17,10 @@ const Create = ({ placeholder }) => {
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   const [sizes, setSizes] = useState([]);
+  const [loadingSizes, setLoadingSizes] = useState(false);
 
-  // ✅ selected images (NOT uploaded yet)
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
-
   const [imageUploading, setImageUploading] = useState(false);
 
   const config = useMemo(
@@ -29,7 +28,7 @@ const Create = ({ placeholder }) => {
       readonly: false,
       placeholder: placeholder || "",
     }),
-    [placeholder]
+    [placeholder],
   );
 
   const {
@@ -41,12 +40,11 @@ const Create = ({ placeholder }) => {
   } = useForm({
     defaultValues: {
       sizes: [],
-      discount_type: "",     // ✅ new
-      discount_value: "",    // ✅ new
+      discount_type: "",
+      discount_value: "",
     },
   });
 
-  // ✅ watch discount fields to validate conditionally
   const discountType = watch("discount_type");
   const priceWatch = watch("price");
   const discountValueWatch = watch("discount_value");
@@ -56,7 +54,24 @@ const Create = ({ placeholder }) => {
     return (doc.body.textContent || "").trim();
   };
 
-  // ✅ pick images + previews (NO upload here)
+  // ✅ Safer label resolver for category/brand/size API response
+  const getOptionLabel = (item) => {
+    return (
+      item?.name ||
+      item?.title ||
+      item?.label ||
+      item?.size ||
+      item?.value ||
+      item?.slug ||
+      `Item ${item?.id ?? ""}`
+    );
+  };
+
+  // ✅ Safer value resolver
+  const getOptionValue = (item) => {
+    return item?.id ?? item?.value ?? "";
+  };
+
   const handleFile = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -115,7 +130,6 @@ const Create = ({ placeholder }) => {
     setDisable(true);
 
     try {
-      // ✅ upload images on submit (in preview order)
       setImageUploading(true);
 
       const tempIds = [];
@@ -126,13 +140,13 @@ const Create = ({ placeholder }) => {
 
       setImageUploading(false);
 
-      const sizeIds = (data.sizes || [])
-        .map((x) => parseInt(x, 10))
-        .filter(Boolean);
+      const sizeIds = Array.isArray(data.sizes)
+        ? data.sizes.map((x) => parseInt(x, 10)).filter(Boolean)
+        : [];
 
-      // ✅ discount sanitize
       let discount_type = data.discount_type || null;
-      let discount_value = data.discount_value !== "" ? Number(data.discount_value) : null;
+      let discount_value =
+        data.discount_value !== "" ? Number(data.discount_value) : null;
 
       if (!discount_type) {
         discount_type = null;
@@ -144,14 +158,12 @@ const Create = ({ placeholder }) => {
           return;
         }
 
-        // if percent, max 100
         if (discount_type === "percent" && discount_value > 100) {
           toast.error("Percent discount cannot be more than 100");
           setDisable(false);
           return;
         }
 
-        // if amount, cannot exceed price
         const price = Number(data.price || 0);
         if (discount_type === "amount" && discount_value > price) {
           toast.error("Discount amount cannot be greater than price");
@@ -165,8 +177,6 @@ const Create = ({ placeholder }) => {
         description: stripHtml(content),
         gallery: tempIds,
         sizes: sizeIds,
-
-        // ✅ send discount fields to backend
         discount_type,
         discount_value,
       };
@@ -214,8 +224,11 @@ const Create = ({ placeholder }) => {
           Authorization: `Bearer ${adminToken()}`,
         },
       });
+
       const result = await res.json();
-      if (result.status === 200) setCategories(result.data);
+      if (result.status === 200) {
+        setCategories(Array.isArray(result.data) ? result.data : []);
+      }
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
@@ -231,8 +244,11 @@ const Create = ({ placeholder }) => {
           Authorization: `Bearer ${adminToken()}`,
         },
       });
+
       const result = await res.json();
-      if (result.status === 200) setBrands(result.data);
+      if (result.status === 200) {
+        setBrands(Array.isArray(result.data) ? result.data : []);
+      }
     } catch (error) {
       console.error("Error fetching brands:", error);
     }
@@ -240,6 +256,8 @@ const Create = ({ placeholder }) => {
 
   const fetchSizes = async () => {
     try {
+      setLoadingSizes(true);
+
       const res = await fetch(`${apiUrl}/sizes`, {
         method: "GET",
         headers: {
@@ -248,10 +266,27 @@ const Create = ({ placeholder }) => {
           Authorization: `Bearer ${adminToken()}`,
         },
       });
+
       const result = await res.json();
-      if (result.status === 200) setSizes(result.data);
+      console.log("Sizes API response:", result);
+
+      if (result.status === 200) {
+        const sizeData = Array.isArray(result.data) ? result.data : [];
+        setSizes(sizeData);
+
+        if (sizeData.length === 0) {
+          toast.warning("No sizes found from API");
+        }
+      } else {
+        setSizes([]);
+        toast.error(result.message || "Failed to load sizes");
+      }
     } catch (error) {
       console.error("Error fetching sizes:", error);
+      setSizes([]);
+      toast.error("Error fetching sizes");
+    } finally {
+      setLoadingSizes(false);
     }
   };
 
@@ -266,7 +301,6 @@ const Create = ({ placeholder }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ small preview helper for discount
   const computedFinalPrice = useMemo(() => {
     const price = Number(priceWatch || 0);
     const dv = Number(discountValueWatch || 0);
@@ -310,13 +344,17 @@ const Create = ({ placeholder }) => {
                         Title <span className="text-danger">*</span>
                       </label>
                       <input
-                        {...register("title", { required: "The title field is required" })}
+                        {...register("title", {
+                          required: "The title field is required",
+                        })}
                         type="text"
-                        className={`form-control ${errors.title && "is-invalid"}`}
+                        className={`form-control ${errors.title ? "is-invalid" : ""}`}
                         placeholder="Title"
                       />
                       {errors.title && (
-                        <p className="invalid-feedback">{errors.title?.message}</p>
+                        <p className="invalid-feedback">
+                          {errors.title?.message}
+                        </p>
                       )}
                     </div>
 
@@ -326,13 +364,17 @@ const Create = ({ placeholder }) => {
                         SKU <span className="text-danger">*</span>
                       </label>
                       <input
-                        {...register("sku", { required: "The SKU field is required" })}
+                        {...register("sku", {
+                          required: "The SKU field is required",
+                        })}
                         type="text"
-                        className={`form-control ${errors.sku && "is-invalid"}`}
+                        className={`form-control ${errors.sku ? "is-invalid" : ""}`}
                         placeholder="SKU"
                       />
                       {errors.sku && (
-                        <p className="invalid-feedback">{errors.sku?.message}</p>
+                        <p className="invalid-feedback">
+                          {errors.sku?.message}
+                        </p>
                       )}
                     </div>
 
@@ -342,18 +384,25 @@ const Create = ({ placeholder }) => {
                         Category <span className="text-danger">*</span>
                       </label>
                       <select
-                        {...register("category", { required: "Please select a category" })}
-                        className={`form-control ${errors.category && "is-invalid"}`}
+                        {...register("category", {
+                          required: "Please select a category",
+                        })}
+                        className={`form-control ${errors.category ? "is-invalid" : ""}`}
                       >
                         <option value="">Select a Category</option>
                         {categories.map((cat) => (
-                          <option key={cat.id} value={cat.id}>
-                            {cat.name}
+                          <option
+                            key={getOptionValue(cat)}
+                            value={getOptionValue(cat)}
+                          >
+                            {getOptionLabel(cat)}
                           </option>
                         ))}
                       </select>
                       {errors.category && (
-                        <p className="invalid-feedback">{errors.category?.message}</p>
+                        <p className="invalid-feedback">
+                          {errors.category?.message}
+                        </p>
                       )}
                     </div>
 
@@ -363,8 +412,11 @@ const Create = ({ placeholder }) => {
                       <select {...register("brand")} className="form-control">
                         <option value="">Select a Brand</option>
                         {brands.map((brand) => (
-                          <option key={brand.id} value={brand.id}>
-                            {brand.name}
+                          <option
+                            key={getOptionValue(brand)}
+                            value={getOptionValue(brand)}
+                          >
+                            {getOptionLabel(brand)}
                           </option>
                         ))}
                       </select>
@@ -377,15 +429,25 @@ const Create = ({ placeholder }) => {
                         {...register("sizes")}
                         className="form-control"
                         multiple
-                        style={{ height: 120 }}
+                        size={6}
+                        style={{ minHeight: "160px" }}
                       >
-                        {sizes.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
+                        {loadingSizes ? (
+                          <option disabled>Loading sizes...</option>
+                        ) : sizes.length > 0 ? (
+                          sizes.map((s, index) => (
+                            <option
+                              key={getOptionValue(s) || index}
+                              value={String(getOptionValue(s))}
+                            >
+                              {getOptionLabel(s)}
+                            </option>
+                          ))
+                        ) : (
+                          <option disabled>No sizes available</option>
+                        )}
                       </select>
-                      <small className="text-muted">
+                      <small className="text-muted d-block mt-1">
                         Hold Ctrl (Windows) / Cmd (Mac) to select multiple.
                       </small>
                     </div>
@@ -396,14 +458,18 @@ const Create = ({ placeholder }) => {
                         Price <span className="text-danger">*</span>
                       </label>
                       <input
-                        {...register("price", { required: "The price field is required" })}
+                        {...register("price", {
+                          required: "The price field is required",
+                        })}
                         type="number"
                         step="0.01"
-                        className={`form-control ${errors.price && "is-invalid"}`}
+                        className={`form-control ${errors.price ? "is-invalid" : ""}`}
                         placeholder="Price"
                       />
                       {errors.price && (
-                        <p className="invalid-feedback">{errors.price?.message}</p>
+                        <p className="invalid-feedback">
+                          {errors.price?.message}
+                        </p>
                       )}
                     </div>
 
@@ -419,7 +485,7 @@ const Create = ({ placeholder }) => {
                       />
                     </div>
 
-                    {/* ✅ DISCOUNT TYPE */}
+                    {/* Discount Type */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Discount Type</label>
                       <select
@@ -436,21 +502,32 @@ const Create = ({ placeholder }) => {
                       </select>
                     </div>
 
-                    {/* ✅ DISCOUNT VALUE */}
+                    {/* Discount Value */}
                     <div className="col-md-6 mb-3">
                       <label className="form-label">
-                        Discount Value {discountType ? <span className="text-danger">*</span> : null}
+                        Discount Value{" "}
+                        {discountType ? (
+                          <span className="text-danger">*</span>
+                        ) : null}
                       </label>
                       <input
                         {...register("discount_value")}
                         type="number"
                         step="0.01"
                         className="form-control"
-                        placeholder={discountType === "percent" ? "e.g. 10" : "e.g. 200"}
+                        placeholder={
+                          discountType === "percent" ? "e.g. 10" : "e.g. 200"
+                        }
                         disabled={!discountType}
                       />
                       <small className="text-muted">
-                        Final Price Preview: <b>৳ {Number.isNaN(computedFinalPrice) ? 0 : computedFinalPrice}</b>
+                        Final Price Preview:{" "}
+                        <b>
+                          ৳{" "}
+                          {Number.isNaN(computedFinalPrice)
+                            ? 0
+                            : computedFinalPrice}
+                        </b>
                       </small>
                     </div>
 
@@ -505,15 +582,21 @@ const Create = ({ placeholder }) => {
                         Is Featured <span className="text-danger">*</span>
                       </label>
                       <select
-                        {...register("is_featured", { required: "Please select featured status" })}
-                        className={`form-control ${errors.is_featured && "is-invalid"}`}
+                        {...register("is_featured", {
+                          required: "Please select featured status",
+                        })}
+                        className={`form-control ${
+                          errors.is_featured ? "is-invalid" : ""
+                        }`}
                       >
                         <option value="">Select</option>
                         <option value="1">Yes</option>
                         <option value="0">No</option>
                       </select>
                       {errors.is_featured && (
-                        <p className="invalid-feedback">{errors.is_featured?.message}</p>
+                        <p className="invalid-feedback">
+                          {errors.is_featured?.message}
+                        </p>
                       )}
                     </div>
 
@@ -523,15 +606,19 @@ const Create = ({ placeholder }) => {
                         Status <span className="text-danger">*</span>
                       </label>
                       <select
-                        {...register("status", { required: "Please select a status" })}
-                        className={`form-control ${errors.status && "is-invalid"}`}
+                        {...register("status", {
+                          required: "Please select a status",
+                        })}
+                        className={`form-control ${errors.status ? "is-invalid" : ""}`}
                       >
                         <option value="">Select a Status</option>
                         <option value="1">Active</option>
                         <option value="0">Block</option>
                       </select>
                       {errors.status && (
-                        <p className="invalid-feedback">{errors.status?.message}</p>
+                        <p className="invalid-feedback">
+                          {errors.status?.message}
+                        </p>
                       )}
                     </div>
 
@@ -560,7 +647,10 @@ const Create = ({ placeholder }) => {
                                   position: "relative",
                                   width: 120,
                                   height: 120,
-                                  border: idx === 0 ? "2px solid #0d6efd" : "1px solid #ddd",
+                                  border:
+                                    idx === 0
+                                      ? "2px solid #0d6efd"
+                                      : "1px solid #ddd",
                                   borderRadius: 8,
                                   overflow: "hidden",
                                 }}
@@ -569,7 +659,11 @@ const Create = ({ placeholder }) => {
                                 <img
                                   src={p.url}
                                   alt={p.name}
-                                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
                                 />
                                 {idx === 0 && (
                                   <div
@@ -619,7 +713,11 @@ const Create = ({ placeholder }) => {
                 disabled={disable || imageUploading}
                 className="btn btn-primary mt-3 mb-3"
               >
-                {disable ? "Creating..." : imageUploading ? "Uploading..." : "Create Product"}
+                {disable
+                  ? "Creating..."
+                  : imageUploading
+                    ? "Uploading..."
+                    : "Create Product"}
               </button>
             </form>
           </div>
