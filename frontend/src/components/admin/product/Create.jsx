@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import Layout from "../../common/Layout";
 import { Link, useNavigate } from "react-router-dom";
 import Sidebar from "../../common/Sidebar";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { adminToken, apiUrl } from "../../common/http";
 import { toast } from "react-toastify";
 import JoditEditor from "jodit-react";
@@ -33,18 +33,26 @@ const Create = ({ placeholder }) => {
   const {
     register,
     handleSubmit,
+    control,
     setValue,
     watch,
     formState: { errors },
   } = useForm({
     defaultValues: {
-      sizes: [],
+      title: "",
+      sku: "",
+      price: "",
+      compare_price: "",
       discount_type: "",
       discount_value: "",
+      qty: "",
+      barcode: "",
+      short_description: "",
       is_featured: "",
       status: "",
       category: "",
       brand: "",
+      sizes: [],
     },
   });
 
@@ -53,7 +61,7 @@ const Create = ({ placeholder }) => {
   const discountValueWatch = watch("discount_value");
 
   const stripHtml = (html) => {
-    const doc = new DOMParser().parseFromString(html, "text/html");
+    const doc = new DOMParser().parseFromString(html || "", "text/html");
     return (doc.body.textContent || "").trim();
   };
 
@@ -144,6 +152,12 @@ const Create = ({ placeholder }) => {
         return;
       }
 
+      if (!data.price) {
+        toast.error("Price is required");
+        setDisable(false);
+        return;
+      }
+
       setImageUploading(true);
 
       const tempIds = [];
@@ -186,6 +200,9 @@ const Create = ({ placeholder }) => {
         }
       }
 
+      const numericCategory = Number(data.category);
+      const numericBrand = data.brand ? Number(data.brand) : null;
+
       const productData = {
         title: data.title.trim(),
         sku: data.sku.trim(),
@@ -194,9 +211,13 @@ const Create = ({ placeholder }) => {
         discount_type,
         discount_value,
 
-        // IMPORTANT: send these names because your controller expects them
-        category: Number(data.category),
-        brand: data.brand ? Number(data.brand) : null,
+        // for current controller
+        category: numericCategory,
+        brand: numericBrand,
+
+        // fallback compatibility
+        category_id: numericCategory,
+        brand_id: numericBrand,
 
         qty: data.qty ? Number(data.qty) : 0,
         barcode: data.barcode?.trim() || null,
@@ -208,7 +229,10 @@ const Create = ({ placeholder }) => {
         sizes: sizeIds,
       };
 
-      console.log("Submitting product payload:", productData);
+      console.log(
+        "Submitting product payload:",
+        JSON.stringify(productData, null, 2),
+      );
 
       const res = await fetch(`${apiUrl}/products`, {
         method: "POST",
@@ -224,7 +248,6 @@ const Create = ({ placeholder }) => {
 
       if (result.status === 200) {
         toast.success(result.message || "Product created");
-
         previews.forEach((p) => URL.revokeObjectURL(p.url));
         navigate("/admin/product");
       } else if (result.status === 400) {
@@ -408,23 +431,27 @@ const Create = ({ placeholder }) => {
                       <label className="form-label">
                         Category <span className="text-danger">*</span>
                       </label>
-                      <select
-                        {...register("category", {
-                          required: "Please select a category",
-                        })}
-                        defaultValue=""
-                        className={`form-control ${errors.category ? "is-invalid" : ""}`}
-                      >
-                        <option value="">Select a Category</option>
-                        {categories.map((cat) => (
-                          <option
-                            key={getOptionValue(cat)}
-                            value={getOptionValue(cat)}
+                      <Controller
+                        name="category"
+                        control={control}
+                        rules={{ required: "Please select a category" }}
+                        render={({ field }) => (
+                          <select
+                            {...field}
+                            className={`form-control ${errors.category ? "is-invalid" : ""}`}
                           >
-                            {getOptionLabel(cat)}
-                          </option>
-                        ))}
-                      </select>
+                            <option value="">Select a Category</option>
+                            {categories.map((cat) => (
+                              <option
+                                key={getOptionValue(cat)}
+                                value={String(getOptionValue(cat))}
+                              >
+                                {getOptionLabel(cat)}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      />
                       {errors.category && (
                         <p className="invalid-feedback">
                           {errors.category?.message}
@@ -434,21 +461,23 @@ const Create = ({ placeholder }) => {
 
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Brand</label>
-                      <select
-                        {...register("brand")}
-                        defaultValue=""
-                        className="form-control"
-                      >
-                        <option value="">Select a Brand</option>
-                        {brands.map((brand) => (
-                          <option
-                            key={getOptionValue(brand)}
-                            value={getOptionValue(brand)}
-                          >
-                            {getOptionLabel(brand)}
-                          </option>
-                        ))}
-                      </select>
+                      <Controller
+                        name="brand"
+                        control={control}
+                        render={({ field }) => (
+                          <select {...field} className="form-control">
+                            <option value="">Select a Brand</option>
+                            {brands.map((brand) => (
+                              <option
+                                key={getOptionValue(brand)}
+                                value={String(getOptionValue(brand))}
+                              >
+                                {getOptionLabel(brand)}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      />
                     </div>
 
                     <div className="col-md-12 mb-3">
@@ -592,7 +621,7 @@ const Create = ({ placeholder }) => {
                         value={content}
                         config={config}
                         tabIndex={1}
-                        onBlur={(newContent) => setContent(newContent)}
+                        onChange={(newContent) => setContent(newContent)}
                       />
                     </div>
 
