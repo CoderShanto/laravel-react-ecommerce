@@ -1,11 +1,20 @@
 FROM php:8.2-fpm
 
-# System deps + nginx + PHP extensions (GD with WebP) + MySQL
+# System dependencies + nginx + PHP extensions (GD with WebP) + MySQL + PostgreSQL
 RUN apt-get update && apt-get install -y \
-    nginx git unzip curl libzip-dev default-mysql-client \
-    libpng-dev libjpeg62-turbo-dev libfreetype6-dev libwebp-dev \
+    nginx \
+    git \
+    unzip \
+    curl \
+    libzip-dev \
+    default-mysql-client \
+    libpq-dev \
+    libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
+    libwebp-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install pdo pdo_mysql zip gd \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql pgsql zip gd \
     && rm -rf /var/lib/apt/lists/*
 
 # Composer
