@@ -11,9 +11,8 @@ import Layout from "./common/Layout";
 import ProductImg from "../assets/images/eight.jpg";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import AutoCompleteSearch from "./common/AutoCompleteSearch";
-import { api,baseUrl } from "./common/http";
+import { api, baseUrl } from "./common/http";
 import { Rating } from "react-simple-star-rating";
-
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -26,7 +25,6 @@ const Shop = () => {
   const urlMax = searchParams.get("max_price");
 
   // (You can remove these if api/baseUrl already exists in your http.js)
- 
 
   const [allProducts, setAllProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -145,15 +143,21 @@ const Shop = () => {
       try {
         setLoading(true);
 
-       const [catRes, brandRes, prodRes] = await Promise.all([
-  api.get("/get-categories"),
-  api.get("/get-brands"),
-  api.get("/get-products"),
-]);
+        const [catRes, brandRes, prodRes] = await Promise.all([
+          api.get("/get-categories"),
+          api.get("/get-brands"),
+          api.get("/get-products"),
+        ]);
 
-setCategories(catRes.data?.status === 200 ? catRes.data.data || [] : []);
-setBrands(brandRes.data?.status === 200 ? brandRes.data.data || [] : []);
-setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
+        setCategories(
+          catRes.data?.status === 200 ? catRes.data.data || [] : [],
+        );
+        setBrands(
+          brandRes.data?.status === 200 ? brandRes.data.data || [] : [],
+        );
+        setAllProducts(
+          prodRes.data?.status === 200 ? prodRes.data.data || [] : [],
+        );
       } catch (e) {
         console.error(e);
         setCategories([]);
@@ -192,10 +196,12 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
 
-    if (selectedCategories.length > 0) params.set("category", String(selectedCategories[0]));
+    if (selectedCategories.length > 0)
+      params.set("category", String(selectedCategories[0]));
     else params.delete("category");
 
-    if (selectedBrands.length > 0) params.set("brand", String(selectedBrands[0]));
+    if (selectedBrands.length > 0)
+      params.set("brand", String(selectedBrands[0]));
     else params.delete("brand");
 
     if (minPrice !== "") params.set("min_price", minPrice);
@@ -210,24 +216,44 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
 
   const handleCategoryChange = (categoryId) => {
     setSelectedCategories((prev) =>
-      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId]
+      prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId],
     );
   };
 
   const handleBrandChange = (brandId) => {
     setSelectedBrands((prev) =>
-      prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId]
+      prev.includes(brandId)
+        ? prev.filter((id) => id !== brandId)
+        : [...prev, brandId],
     );
   };
 
+  // const getProductImage = (product) => {
+  //   if (product.image) return `${baseUrl}/uploads/products/small/${product.image}`;
+  //   if (product.image_url) return product.image_url;
+  //   return ProductImg;
+  // };
+
   const getProductImage = (product) => {
-    if (product.image) return `${baseUrl}/uploads/products/small/${product.image}`;
-    if (product.image_url) return product.image_url;
+    if (product?.image_url && product.image_url !== "") {
+      return product.image_url;
+    }
+
+    if (product?.image?.startsWith("http")) {
+      return product.image;
+    }
+
     return ProductImg;
   };
 
   const fixPriceIfInvalid = () => {
-    if (minPrice !== "" && maxPrice !== "" && Number(minPrice) > Number(maxPrice)) {
+    if (
+      minPrice !== "" &&
+      maxPrice !== "" &&
+      Number(minPrice) > Number(maxPrice)
+    ) {
       const tmp = minPrice;
       setMinPrice(maxPrice);
       setMaxPrice(tmp);
@@ -267,14 +293,23 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
     const min = minPrice === "" ? null : Number(minPrice);
     const max = maxPrice === "" ? null : Number(maxPrice);
 
-    if (min !== null && !Number.isNaN(min)) list = list.filter((p) => Number(p.price) >= min);
-    if (max !== null && !Number.isNaN(max)) list = list.filter((p) => Number(p.price) <= max);
+    if (min !== null && !Number.isNaN(min))
+      list = list.filter((p) => Number(p.price) >= min);
+    if (max !== null && !Number.isNaN(max))
+      list = list.filter((p) => Number(p.price) <= max);
 
     const q = search.trim().toLowerCase();
     if (q) list = list.filter((p) => (p.title || "").toLowerCase().includes(q));
 
     return list;
-  }, [allProducts, selectedCategories, selectedBrands, minPrice, maxPrice, search]);
+  }, [
+    allProducts,
+    selectedCategories,
+    selectedBrands,
+    minPrice,
+    maxPrice,
+    search,
+  ]);
 
   /* ===========================
      ✅ TRACK FILTERS TO DB (debounced)
@@ -301,7 +336,14 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
     }, 500);
 
     return () => clearTimeout(t);
-  }, [search, selectedCategories, selectedBrands, minPrice, maxPrice, filteredProducts.length]);
+  }, [
+    search,
+    selectedCategories,
+    selectedBrands,
+    minPrice,
+    maxPrice,
+    filteredProducts.length,
+  ]);
 
   /* ===========================
      ✅ FETCH RATINGS FOR VISIBLE PRODUCTS (debounced)
@@ -340,7 +382,13 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
               <div className="card-body p-4">
                 <h5 className="mb-3">Categories</h5>
                 {categories.length > 0 ? (
-                  <ul style={{ listStyle: "none", paddingLeft: 0, marginBottom: 0 }}>
+                  <ul
+                    style={{
+                      listStyle: "none",
+                      paddingLeft: 0,
+                      marginBottom: 0,
+                    }}
+                  >
                     {categories.map((category) => (
                       <li key={category.id} className="mb-2">
                         <input
@@ -349,7 +397,11 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
                           checked={selectedCategories.includes(category.id)}
                           onChange={() => handleCategoryChange(category.id)}
                         />
-                        <label htmlFor={`category-${category.id}`} className="ps-2" style={{ cursor: "pointer" }}>
+                        <label
+                          htmlFor={`category-${category.id}`}
+                          className="ps-2"
+                          style={{ cursor: "pointer" }}
+                        >
                           {category.name}
                         </label>
                       </li>
@@ -366,7 +418,13 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
               <div className="card-body p-4">
                 <h5 className="mb-3">Brands</h5>
                 {brands.length > 0 ? (
-                  <ul style={{ listStyle: "none", paddingLeft: 0, marginBottom: 0 }}>
+                  <ul
+                    style={{
+                      listStyle: "none",
+                      paddingLeft: 0,
+                      marginBottom: 0,
+                    }}
+                  >
                     {brands.map((brand) => (
                       <li key={brand.id} className="mb-2">
                         <input
@@ -375,7 +433,11 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
                           checked={selectedBrands.includes(brand.id)}
                           onChange={() => handleBrandChange(brand.id)}
                         />
-                        <label htmlFor={`brand-${brand.id}`} className="ps-2" style={{ cursor: "pointer" }}>
+                        <label
+                          htmlFor={`brand-${brand.id}`}
+                          className="ps-2"
+                          style={{ cursor: "pointer" }}
+                        >
                           {brand.name}
                         </label>
                       </li>
@@ -419,21 +481,41 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
                 </div>
 
                 <div className="d-flex flex-wrap gap-2 mb-3">
-                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setPreset("", "100")}>
+                  <button
+                    className="btn btn-outline-secondary btn-sm"
+                    type="button"
+                    onClick={() => setPreset("", "100")}
+                  >
                     Under 100
                   </button>
-                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setPreset("100", "500")}>
+                  <button
+                    className="btn btn-outline-secondary btn-sm"
+                    type="button"
+                    onClick={() => setPreset("100", "500")}
+                  >
                     100–500
                   </button>
-                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setPreset("500", "1000")}>
+                  <button
+                    className="btn btn-outline-secondary btn-sm"
+                    type="button"
+                    onClick={() => setPreset("500", "1000")}
+                  >
                     500–1000
                   </button>
-                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setPreset("1000", "")}>
+                  <button
+                    className="btn btn-outline-secondary btn-sm"
+                    type="button"
+                    onClick={() => setPreset("1000", "")}
+                  >
                     1000+
                   </button>
                 </div>
 
-                <button className="btn btn-light btn-sm w-100" type="button" onClick={() => setPreset("", "")}>
+                <button
+                  className="btn btn-light btn-sm w-100"
+                  type="button"
+                  onClick={() => setPreset("", "")}
+                >
                   Clear Price
                 </button>
               </div>
@@ -479,10 +561,15 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
 
                       if (product.discount_type === "percent") {
                         discountPercentLocal = product.discount_value;
-                        discountedPrice = product.price - product.price * (product.discount_value / 100);
+                        discountedPrice =
+                          product.price -
+                          product.price * (product.discount_value / 100);
                       } else if (product.discount_type === "fixed") {
-                        discountedPrice = product.price - product.discount_value;
-                        discountPercentLocal = Math.round((product.discount_value / product.price) * 100);
+                        discountedPrice =
+                          product.price - product.discount_value;
+                        discountPercentLocal = Math.round(
+                          (product.discount_value / product.price) * 100,
+                        );
                       }
                     }
 
@@ -491,22 +578,32 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
                     const r = ratingsMap[product.id] || { avg: 0, total: 0 };
 
                     return (
-                      <div key={product.id} className="col-lg-3 col-md-4 col-6 mb-4">
+                      <div
+                        key={product.id}
+                        className="col-lg-3 col-md-4 col-6 mb-4"
+                      >
                         <div className="product-card-modern">
                           {/* Discount Badge */}
                           {hasDiscountLocal && (
                             <div className="discount-badge">
-                              <span className="discount-percent">{discountPercentLocal}%</span>
+                              <span className="discount-percent">
+                                {discountPercentLocal}%
+                              </span>
                               <span className="discount-text">OFF</span>
                             </div>
                           )}
 
                           {/* Hot Deal Badge */}
-                          {hasDiscountLocal && discountPercentLocal >= 30 && <div className="hot-deal-badge">🔥 HOT DEAL</div>}
+                          {hasDiscountLocal && discountPercentLocal >= 30 && (
+                            <div className="hot-deal-badge">🔥 HOT DEAL</div>
+                          )}
 
                           {/* Product Image */}
                           <div className="product-image-wrapper">
-                            <Link to={`/product/${product.id}`} onClick={() => scoreInterest(product.id, "click")}>
+                            <Link
+                              to={`/product/${product.id}`}
+                              onClick={() => scoreInterest(product.id, "click")}
+                            >
                               <img
                                 src={getProductImage(product)}
                                 alt={product.title}
@@ -526,7 +623,14 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
                                   navigate(`/product/${product.id}`);
                                 }}
                               >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <svg
+                                  width="20"
+                                  height="20"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
                                   <circle cx="9" cy="21" r="1" />
                                   <circle cx="20" cy="21" r="1" />
                                   <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
@@ -538,7 +642,11 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
 
                           {/* Product Info */}
                           <div className="product-info">
-                            <Link to={`/product/${product.id}`} onClick={() => scoreInterest(product.id, "click")} className="product-title">
+                            <Link
+                              to={`/product/${product.id}`}
+                              onClick={() => scoreInterest(product.id, "click")}
+                              className="product-title"
+                            >
                               {product.title}
                             </Link>
 
@@ -552,7 +660,9 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
 
                             {product.short_description && (
                               <p className="product-description">
-                                {product.short_description.length > 50 ? `${product.short_description}...` : product.short_description}
+                                {product.short_description.length > 50
+                                  ? `${product.short_description}...`
+                                  : product.short_description}
                               </p>
                             )}
 
@@ -561,14 +671,25 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
                               <div className="price-wrapper">
                                 {hasDiscountLocal ? (
                                   <>
-                                    <span className="current-price">৳{Number(discountedPrice).toFixed(0)}</span>
-                                    <span className="original-price">৳{Number(product.price).toFixed(0)}</span>
+                                    <span className="current-price">
+                                      ৳{Number(discountedPrice).toFixed(0)}
+                                    </span>
+                                    <span className="original-price">
+                                      ৳{Number(product.price).toFixed(0)}
+                                    </span>
                                   </>
                                 ) : (
                                   <>
-                                    <span className="current-price">৳{Number(product.price).toFixed(0)}</span>
+                                    <span className="current-price">
+                                      ৳{Number(product.price).toFixed(0)}
+                                    </span>
                                     {product.compare_price && (
-                                      <span className="original-price">৳{Number(product.compare_price).toFixed(0)}</span>
+                                      <span className="original-price">
+                                        ৳
+                                        {Number(product.compare_price).toFixed(
+                                          0,
+                                        )}
+                                      </span>
                                     )}
                                   </>
                                 )}
@@ -581,7 +702,9 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
                   })
                 ) : (
                   <div className="col-12 text-center py-5">
-                    <p className="text-muted">No products found. Try searching or adjusting filters.</p>
+                    <p className="text-muted">
+                      No products found. Try searching or adjusting filters.
+                    </p>
                   </div>
                 )}
               </div>
@@ -706,7 +829,11 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
               left: 0;
               right: 0;
               padding: 16px;
-              background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+              background: linear-gradient(
+                to top,
+                rgba(0, 0, 0, 0.8),
+                transparent
+              );
               transform: translateY(100%);
               transition: transform 0.3s ease;
             }
@@ -816,7 +943,11 @@ setAllProducts(prodRes.data?.status === 200 ? prodRes.data.data || [] : []);
 
               .quick-add-overlay {
                 transform: translateY(0);
-                background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+                background: linear-gradient(
+                  to top,
+                  rgba(0, 0, 0, 0.9),
+                  transparent
+                );
               }
             }
 
