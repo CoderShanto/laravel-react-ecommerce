@@ -29,8 +29,6 @@ class RecommendationController extends Controller
             ], 401);
         }
 
-        $baseUrl = config('app.url') ?: 'http://localhost:8000';
-
         // ---------------------------------------------
         // 1) Get interest rows for this user
         // ---------------------------------------------
@@ -46,7 +44,7 @@ class RecommendationController extends Controller
                 'last_interacted_at',
             ])
             ->orderByDesc('score')
-            ->limit(300) // allow enough before final ranking
+            ->limit(300)
             ->get();
 
         // ---------------------------------------------
@@ -62,9 +60,9 @@ class RecommendationController extends Controller
                 DB::raw('SUM(order_items.qty) as total_qty'),
                 DB::raw('COUNT(DISTINCT order_items.order_id) as orders_count'),
             ])
-            ->pluck('total_qty', 'product_id'); // product_id => total_qty
+            ->pluck('total_qty', 'product_id');
 
-        // If user has no interest + no purchases -> fallback (latest or popular)
+        // If user has no interest + no purchases -> fallback (latest)
         if ($interestRows->isEmpty() && $purchaseQtyMap->isEmpty()) {
             $fallback = Product::query()
                 ->orderByDesc('id')
@@ -75,25 +73,22 @@ class RecommendationController extends Controller
                 'status' => 200,
                 'type' => 'cold_start_latest',
                 'count' => $fallback->count(),
-                'data' => $this->decorate($fallback, $baseUrl),
+                'data' => $this->decorate($fallback),
             ]);
         }
 
         // ---------------------------------------------
         // 3) Build a combined candidate list
-        //    (includes BOTH interest products + purchased products)
         // ---------------------------------------------
         $candidateIds = collect($interestRows->pluck('product_id'))
             ->merge($purchaseQtyMap->keys())
             ->unique()
             ->values();
 
-        // Load product data
         $products = Product::query()
             ->whereIn('id', $candidateIds)
             ->get($this->productCols());
 
-        // Create quick map for interest score
         $interestScoreMap = $interestRows->keyBy('product_id');
 
         // ---------------------------------------------
@@ -102,11 +97,8 @@ class RecommendationController extends Controller
         $ranked = $products->map(function ($p) use ($interestScoreMap, $purchaseQtyMap) {
             $interest = $interestScoreMap->get($p->id);
             $interestScore = (int) ($interest->score ?? 0);
-
             $purchaseQty = (int) ($purchaseQtyMap[$p->id] ?? 0);
 
-            // ✅ Ranking formula (edit weights anytime)
-            // Purchase is stronger, so *20
             $finalRank = $interestScore + ($purchaseQty * 20);
 
             return [
@@ -121,9 +113,9 @@ class RecommendationController extends Controller
         ->values();
 
         // ---------------------------------------------
-        // 5) Return decorated products + debug (optional)
+        // 5) Return decorated products + debug
         // ---------------------------------------------
-        $data = $ranked->map(function ($row) use ($baseUrl) {
+        $data = $ranked->map(function ($row) {
             $p = $row['product'];
 
             $price = (float) ($p->price ?? 0);
@@ -138,10 +130,10 @@ class RecommendationController extends Controller
                 'discount_value' => $p->discount_value !== null ? (float) $p->discount_value : null,
                 'short_description' => $p->short_description,
                 'image' => $p->image,
-                'image_url' => $p->image ? ($baseUrl . '/uploads/products/small/' . $p->image) : null,
+                'image_url' => $p->image ?: null,
                 'final_price' => $final,
 
-                // ✅ helpful debug per user (you can remove later)
+                // optional debug
                 'my_interest_score' => $row['interest_score'],
                 'my_purchase_qty' => $row['purchase_qty'],
                 'my_rank_score' => $row['final_rank'],
@@ -152,7 +144,7 @@ class RecommendationController extends Controller
             'status' => 200,
             'type' => 'user_history_based',
             'count' => $data->count(),
-            'data' => $data,
+            'data' => $data->values(),
         ]);
     }
 
@@ -170,9 +162,9 @@ class RecommendationController extends Controller
         ];
     }
 
-    private function decorate($products, string $baseUrl)
+    private function decorate($products)
     {
-        return $products->map(function ($p) use ($baseUrl) {
+        return $products->map(function ($p) {
             $price = (float) ($p->price ?? 0);
             $final = $this->finalPrice($price, $p->discount_type, $p->discount_value);
 
@@ -185,7 +177,7 @@ class RecommendationController extends Controller
                 'discount_value' => $p->discount_value !== null ? (float) $p->discount_value : null,
                 'short_description' => $p->short_description,
                 'image' => $p->image,
-                'image_url' => $p->image ? ($baseUrl . '/uploads/products/small/' . $p->image) : null,
+                'image_url' => $p->image ?: null,
                 'final_price' => $final,
             ];
         })->values();
@@ -194,13 +186,16 @@ class RecommendationController extends Controller
     private function finalPrice(float $price, $discountType, $discountValue): float
     {
         $discountValue = (float) ($discountValue ?? 0);
-        if ($price <= 0) return 0;
+
+        if ($price <= 0) {
+            return 0;
+        }
 
         if ($discountValue > 0 && $discountType === 'percent') {
             return max(0, round($price - ($price * ($discountValue / 100)), 2));
         }
 
-        if ($discountValue > 0 && $discountType === 'fixed') {
+        if ($discountValue > 0 && ($discountType === 'fixed' || $discountType === 'amount')) {
             return max(0, round($price - $discountValue, 2));
         }
 
