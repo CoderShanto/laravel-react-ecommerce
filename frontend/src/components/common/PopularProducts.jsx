@@ -10,8 +10,6 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  
-
   // ✅ ratings cache: ratingsMap[productId] = { avg, total }
   const [ratingsMap, setRatingsMap] = useState({});
   const fetchingSetRef = useRef(new Set());
@@ -35,7 +33,10 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
           },
         }));
       } else {
-        setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
+        setRatingsMap((prev) => ({
+          ...prev,
+          [productId]: { avg: 0, total: 0 },
+        }));
       }
     } catch {
       setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
@@ -59,31 +60,43 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
     // eslint-disable-next-line
   }, [limit]);
 
- const fetchPopular = async () => {
-  try {
-    setLoading(true);
+  const fetchPopular = async () => {
+    try {
+      setLoading(true);
 
-    const res = await api.get(`/products/popular?limit=${limit}`);
-    const result = res.data;
+      const res = await api.get(`/products/popular?limit=${limit}`);
+      const result = res.data;
 
-    if (result?.status === 200) {
-      setItems(result.data || []);
-    } else {
+      if (result?.status === 200) {
+        setItems(result.data || []);
+      } else {
+        setItems([]);
+      }
+    } catch (e) {
+      console.error("Popular products fetch error:", e);
       setItems([]);
+    } finally {
+      setLoading(false);
     }
-  } catch (e) {
-    console.error("Popular products fetch error:", e);
-    setItems([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const getProduct = (row) => row?.product || {};
 
+  // const getImage = (p) => {
+  //   if (p?.image) return `${baseUrl}/uploads/products/small/${p.image}`;
+  //   if (p?.image_url) return p.image_url;
+  //   return ProductImg;
+  // };
+
   const getImage = (p) => {
-    if (p?.image) return `${baseUrl}/uploads/products/small/${p.image}`;
-    if (p?.image_url) return p.image_url;
+    if (p?.image_url && p.image_url !== "") {
+      return p.image_url;
+    }
+
+    if (p?.image?.startsWith("http")) {
+      return p.image;
+    }
+
     return ProductImg;
   };
 
@@ -97,7 +110,9 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
         <div className="d-flex align-items-end justify-content-between mb-3">
           <div>
             <h2 className="mb-1">{title}</h2>
-            <div className="text-muted small">Trending based on interactions</div>
+            <div className="text-muted small">
+              Trending based on interactions
+            </div>
           </div>
           {/* <Link to="/shop" className="btn btn-outline-dark btn-sm">
             View all
@@ -120,11 +135,12 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
               if (product.discount_type === "percent") {
                 discountPercentLocal = product.discount_value;
                 discountedPrice =
-                  product.price - product.price * (product.discount_value / 100);
+                  product.price -
+                  product.price * (product.discount_value / 100);
               } else if (product.discount_type === "fixed") {
                 discountedPrice = product.price - product.discount_value;
                 discountPercentLocal = Math.round(
-                  (product.discount_value / product.price) * 100
+                  (product.discount_value / product.price) * 100,
                 );
               }
             }
@@ -139,7 +155,9 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
                   {/* Discount Badge */}
                   {hasDiscountLocal && (
                     <div className="discount-badge">
-                      <span className="discount-percent">{discountPercentLocal}%</span>
+                      <span className="discount-percent">
+                        {discountPercentLocal}%
+                      </span>
                       <span className="discount-text">OFF</span>
                     </div>
                   )}
@@ -177,18 +195,18 @@ const PopularProducts = ({ limit = 8, title = "Popular Products" }) => {
                         }}
                       >
                         <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
                         <span>View Product</span>
                       </button>
                     </div>
