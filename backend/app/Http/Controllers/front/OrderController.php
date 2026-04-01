@@ -67,6 +67,7 @@ class OrderController extends Controller
 
             'payment_method' => $request->payment_method,
             'payment_status' => 'pending',
+            'status' => 'pending',
 
             'name' => $request->billing['name'],
             'email' => $request->billing['email'],
