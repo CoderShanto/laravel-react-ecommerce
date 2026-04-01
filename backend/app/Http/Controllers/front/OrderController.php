@@ -32,7 +32,7 @@ class OrderController extends Controller
         'cart' => 'required|array|min:1'
     ]);
 
-    DB::beginTransaction();
+    //DB::beginTransaction();
 
     try {
         $user = $request->user();
@@ -136,7 +136,7 @@ class OrderController extends Controller
             $row->update(['last_interacted_at' => now()]);
         }
 
-        DB::commit();
+        //DB::commit();
 
         return response()->json([
             'status' => 200,
@@ -146,7 +146,7 @@ class OrderController extends Controller
 
     } catch (\Exception $e) {
 
-        DB::rollBack();
+        //DB::rollBack();
 
         return response()->json([
             'status' => 500,
