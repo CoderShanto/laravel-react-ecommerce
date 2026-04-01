@@ -119,32 +119,66 @@ class ProductController extends Controller
 
        if (!empty($request->gallery)) {
     foreach ($request->gallery as $key => $tempImageId) {
-
         $tempImage = TempImage::find($tempImageId);
-        if (!$tempImage) continue;
+
+        if (!$tempImage) {
+            continue;
+        }
 
         $imagePath = public_path('uploads/temp/' . $tempImage->name);
 
-        // ✅ upload to cloudinary
-        $uploaded = Cloudinary::upload($imagePath, [
-            'folder' => 'products'
-        ]);
+        if (!file_exists($imagePath)) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Temp image file not found',
+                'error' => $imagePath
+            ], 500);
+        }
 
-        $imageUrl = $uploaded->getSecurePath();
+        try {
+            $uploaded = \CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary::upload(
+                $imagePath,
+                ['folder' => 'products']
+            );
 
-        // save product image
-        $productImage = new ProductImage();
-        $productImage->image = $imageUrl;
-        $productImage->product_id = $product->id;
-        $productImage->save();
+            if (!$uploaded) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Cloudinary upload returned null',
+                ], 500);
+            }
 
-        // set main image
-        if ($key == 0) {
-            $product->image = $imageUrl;
-            $product->save();
+            $imageUrl = $uploaded->getSecurePath();
+
+            if (!$imageUrl) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Cloudinary secure URL not found',
+                ], 500);
+            }
+
+            $productImage = new ProductImage();
+            $productImage->image = $imageUrl;
+            $productImage->product_id = $product->id;
+            $productImage->save();
+
+            if ($key == 0) {
+                $product->image = $imageUrl;
+                $product->save();
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Cloudinary upload failed',
+                'error' => $e->getMessage(),
+            ], 500);
         }
     }
 }
+
+
+
+
         return response()->json([
             'status' => 200,
             'message' => 'Product has been created successfully'
