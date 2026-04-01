@@ -182,16 +182,16 @@ class AdminDashboardController extends Controller
         // Most used filters / price ranges (user_shop_filters)
         // =========================
         $filterInsights = DB::table('user_shop_filters')
-            ->selectRaw('
-                COUNT(*) as total_filter_used,
-                SUM(CASE WHEN query IS NOT NULL AND query <> "" THEN 1 ELSE 0 END) as used_query,
-                SUM(CASE WHEN min_price IS NOT NULL THEN 1 ELSE 0 END) as used_min_price,
-                SUM(CASE WHEN max_price IS NOT NULL THEN 1 ELSE 0 END) as used_max_price,
-                AVG(CASE WHEN min_price IS NOT NULL THEN min_price ELSE NULL END) as avg_min_price,
-                AVG(CASE WHEN max_price IS NOT NULL THEN max_price ELSE NULL END) as avg_max_price
-            ')
-            ->whereBetween('created_at', [$from, $to])
-            ->first();
+    ->selectRaw("
+        COUNT(*) as total_filter_used,
+        SUM(CASE WHEN query IS NOT NULL AND query <> '' THEN 1 ELSE 0 END) as used_query,
+        SUM(CASE WHEN min_price IS NOT NULL THEN 1 ELSE 0 END) as used_min_price,
+        SUM(CASE WHEN max_price IS NOT NULL THEN 1 ELSE 0 END) as used_max_price,
+        AVG(CASE WHEN min_price IS NOT NULL THEN min_price ELSE NULL END) as avg_min_price,
+        AVG(CASE WHEN max_price IS NOT NULL THEN max_price ELSE NULL END) as avg_max_price
+    ")
+    ->whereBetween('created_at', [$from, $to])
+    ->first();
 
         // =========================
         // Customers by City (top)
