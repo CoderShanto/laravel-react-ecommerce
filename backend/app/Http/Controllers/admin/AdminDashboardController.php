@@ -13,7 +13,9 @@ class AdminDashboardController extends Controller
     {
         // range: 7 / 30 / 90
         $days = (int)($request->get('days', 30));
-        if (!in_array($days, [7, 30, 90])) $days = 30;
+        if (!in_array($days, [7, 30, 90])) {
+            $days = 30;
+        }
 
         $from = Carbon::now()->subDays($days - 1)->startOfDay();
         $to   = Carbon::now()->endOfDay();
@@ -28,14 +30,14 @@ class AdminDashboardController extends Controller
         $discount    = (clone $ordersBase)->sum('discount');
         $shipping    = (clone $ordersBase)->sum('shipping');
 
-        $paidOrders            = (clone $ordersBase)->where('payment_status', 'paid')->count();
-        $pendingPaymentOrders  = (clone $ordersBase)->where('payment_status', 'pending')->count();
+        $paidOrders           = (clone $ordersBase)->where('payment_status', 'paid')->count();
+        $pendingPaymentOrders = (clone $ordersBase)->where('payment_status', 'pending')->count();
 
-        $deliveredOrders   = (clone $ordersBase)->where('status', 'delivered')->count();
-        $processingOrders  = (clone $ordersBase)->where('status', 'processing')->count();
-        $cancelledOrders   = (clone $ordersBase)->where('status', 'cancelled')->count();
+        $deliveredOrders  = (clone $ordersBase)->where('status', 'delivered')->count();
+        $processingOrders = (clone $ordersBase)->where('status', 'processing')->count();
+        $cancelledOrders  = (clone $ordersBase)->where('status', 'cancelled')->count();
 
-        // ✅ FIX: your users.role is "customer" (NOT "user")
+        // your users.role is "customer" (NOT "user")
         $totalCustomers = DB::table('users')->where('role', 'customer')->count();
         $newCustomers = DB::table('users')
             ->where('role', 'customer')
@@ -46,7 +48,7 @@ class AdminDashboardController extends Controller
         $lowStockProducts   = DB::table('products')->where('qty', '<=', 5)->count();
         $outOfStockProducts = DB::table('products')->where('qty', '<=', 0)->count();
 
-        // Net sales = revenue - discount (no cost_price exists, so "profit" can't be real)
+        // Net sales = revenue - discount
         $netSales = $revenue - $discount;
 
         // =========================
@@ -146,7 +148,6 @@ class AdminDashboardController extends Controller
             ->groupBy('status')
             ->get();
 
-        // ✅ FIXED: return_requests.order_item_id -> order_items.id
         $refundLossEstimate = DB::table('return_requests')
             ->join('order_items', 'order_items.id', '=', 'return_requests.order_item_id')
             ->where('return_requests.status', 'refunded')
@@ -170,7 +171,7 @@ class AdminDashboardController extends Controller
         // Top searched terms by users (user_search_terms)
         // =========================
         $topUserSearchTerms = DB::table('user_search_terms')
-            ->selectRaw('term, SUM(searches_count) as total_searches, SUM(results_found) as total_found, MAX(last_searched_at) as last_searched_at')
+            ->selectRaw('term, SUM(searches_count) as total_searches, SUM(CASE WHEN results_found = true THEN 1 ELSE 0 END) as total_found, MAX(last_searched_at) as last_searched_at')
             ->whereBetween('updated_at', [$from, $to])
             ->groupBy('term')
             ->orderByDesc('total_searches')
@@ -217,23 +218,23 @@ class AdminDashboardController extends Controller
         return response()->json([
             'range_days' => $days,
             'kpis' => [
-                'total_orders' => (int)$totalOrders,
-                'revenue' => (float)$revenue,
-                'net_sales' => (float)$netSales,
-                'discount' => (float)$discount,
-                'shipping' => (float)$shipping,
-                'paid_orders' => (int)$paidOrders,
-                'pending_payment_orders' => (int)$pendingPaymentOrders,
-                'delivered_orders' => (int)$deliveredOrders,
-                'processing_orders' => (int)$processingOrders,
-                'cancelled_orders' => (int)$cancelledOrders,
-                'total_customers' => (int)$totalCustomers,
-                'new_customers' => (int)$newCustomers,
-                'total_products' => (int)$totalProducts,
-                'low_stock_products' => (int)$lowStockProducts,
-                'out_of_stock_products' => (int)$outOfStockProducts,
-                'returns_count' => (int)$returnCount,
-                'refund_loss_estimate' => (float)$refundLossEstimate,
+                'total_orders' => (int) $totalOrders,
+                'revenue' => (float) $revenue,
+                'net_sales' => (float) $netSales,
+                'discount' => (float) $discount,
+                'shipping' => (float) $shipping,
+                'paid_orders' => (int) $paidOrders,
+                'pending_payment_orders' => (int) $pendingPaymentOrders,
+                'delivered_orders' => (int) $deliveredOrders,
+                'processing_orders' => (int) $processingOrders,
+                'cancelled_orders' => (int) $cancelledOrders,
+                'total_customers' => (int) $totalCustomers,
+                'new_customers' => (int) $newCustomers,
+                'total_products' => (int) $totalProducts,
+                'low_stock_products' => (int) $lowStockProducts,
+                'out_of_stock_products' => (int) $outOfStockProducts,
+                'returns_count' => (int) $returnCount,
+                'refund_loss_estimate' => (float) $refundLossEstimate,
             ],
             'charts' => [
                 'sales_over_time' => $salesOverTime,
