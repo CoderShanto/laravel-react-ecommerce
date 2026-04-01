@@ -24,57 +24,10 @@ const OrderSuccess = () => {
     }
   }, []);
 
-  // ✅ money helper: no floating problem
+  // money helper
   const money = (n) => Math.round(Number(n || 0));
 
-  // ✅ 1) Load order
-  useEffect(() => {
-    if (!orderNumber) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchOrder = async () => {
-      setLoading(true);
-
-      try {
-        const headers = {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        };
-
-        // ✅ only send authorization if token exists
-        if (token) headers.Authorization = `Bearer ${token}`;
-
-        const res = await fetch(`${apiUrl}/order/${orderNumber}`, { headers });
-
-        const text = await res.text();
-        let data;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          console.log("Non-JSON order response:", text);
-          setOrder(null);
-          return;
-        }
-
-        if (res.ok && data.status === 200) {
-          setOrder(data.order);
-        } else {
-          setOrder(null);
-        }
-      } catch (e) {
-        console.log(e);
-        setOrder(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchOrder();
-  }, [orderNumber, token]);
-
-  // ✅ safe totals (clean numbers)
+  // safe totals
   const totals = useMemo(() => {
     if (!order) {
       return {
@@ -86,7 +39,12 @@ const OrderSuccess = () => {
     }
 
     const subtotal = money(order.subtotal);
-    const shipping = money(order.shipping);
+    const shipping = money(
+      order.shipping ??
+        order.shipping_amount ??
+        order.shipping_charge ??
+        order.delivery_charge
+    );
     const discount = money(order.discount);
     const grandTotal = money(order.grand_total);
 
@@ -102,7 +60,55 @@ const OrderSuccess = () => {
     return { subtotal, shipping, discount, grandTotal };
   }, [order]);
 
-  // ✅ 2) Track PURCHASE once per order
+  // load order
+  useEffect(() => {
+    if (!orderNumber) {
+      setLoading(false);
+      return;
+    }
+
+    const fetchOrder = async () => {
+      setLoading(true);
+
+      try {
+        const headers = {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        };
+
+        if (token) headers.Authorization = `Bearer ${token}`;
+
+        const res = await fetch(`${apiUrl}/order/${orderNumber}`, { headers });
+
+        const text = await res.text();
+        let data;
+
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.log("Non-JSON order response:", text);
+          setOrder(null);
+          return;
+        }
+
+        if (res.ok && data.status === 200) {
+          setOrder(data.order);
+          console.log("ORDER SUCCESS ORDER:", data.order);
+        } else {
+          setOrder(null);
+        }
+      } catch (e) {
+        console.log(e);
+        setOrder(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [orderNumber, token]);
+
+  // track purchase once per order
   useEffect(() => {
     if (!orderNumber) return;
     if (!order) return;
@@ -115,8 +121,6 @@ const OrderSuccess = () => {
 
     const trackPurchase = async () => {
       try {
-        // Build calls: one call per item (recommended)
-        // If you want qty-based count, see note below.
         const reqs = items
           .map((it) => {
             const productId = it.product_id || it.productId || it.product?.id;
@@ -129,26 +133,14 @@ const OrderSuccess = () => {
           .filter(Boolean);
 
         await Promise.allSettled(reqs);
-
-        // ✅ mark done so refresh doesn't double-count
         localStorage.setItem(key, "1");
       } catch (e) {
-        // don't block page
         console.log("purchase tracking failed", e?.response?.data || e);
       }
     };
 
     trackPurchase();
   }, [order, orderNumber]);
-
-  /**
-   * ✅ IMPORTANT NOTE ABOUT QTY:
-   * Right now we track purchase once per product line.
-   * If you want purchase_count to increase by QTY (e.g. qty=3 => +3),
-   * then either:
-   * 1) update backend to accept qty and add it to totals, OR
-   * 2) call purchase multiple times (not recommended because it can spam the server).
-   */
 
   return (
     <Layout>
@@ -173,7 +165,6 @@ const OrderSuccess = () => {
 
           {!loading && order && (
             <>
-              {/* Order Summary Top */}
               <div className="border rounded p-3 mb-4">
                 <div className="row">
                   <div className="col-md-6">
@@ -214,7 +205,6 @@ const OrderSuccess = () => {
                 </div>
               </div>
 
-              {/* Items Table */}
               <div className="table-responsive">
                 <table className="table table-bordered align-middle">
                   <thead className="table-light">
@@ -249,7 +239,6 @@ const OrderSuccess = () => {
                 </table>
               </div>
 
-              {/* Totals */}
               <div className="d-flex justify-content-end">
                 <div style={{ width: 320 }}>
                   <div className="d-flex justify-content-between">
@@ -279,7 +268,6 @@ const OrderSuccess = () => {
             </>
           )}
 
-          {/* Buttons */}
           <div className="mt-4">
             <button
               className="btn btn-primary me-2"
