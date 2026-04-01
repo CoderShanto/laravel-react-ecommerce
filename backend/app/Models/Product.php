@@ -26,7 +26,6 @@ class Product extends Model
         'discount_value',
     ];
 
-    // ✅ FIX: Cloudinary URL (no asset path)
     public function getImageUrlAttribute()
     {
         return $this->image ?: '';
@@ -42,10 +41,10 @@ class Product extends Model
 
         if ($this->discount_type === 'percent') {
             $off = ($price * (float) $this->discount_value) / 100;
-            return max(0, $price - $off);
+            return (float) max(0, $price - $off);
         }
 
-        return max(0, $price - (float) $this->discount_value);
+        return (float) max(0, $price - (float) $this->discount_value);
     }
 
     public function product_images()

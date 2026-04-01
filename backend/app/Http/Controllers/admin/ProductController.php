@@ -1,20 +1,18 @@
 <?php
 
 namespace App\Http\Controllers\admin;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\TempImage;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
 use App\Models\ProductImage;
 use App\Models\ProductSize;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProductController extends Controller
 {
-    // fetching products from db
     public function index()
     {
         $products = Product::orderBy('created_at', 'DESC')
@@ -103,9 +101,8 @@ class ProductController extends Controller
         $product->is_featured = $request->is_featured == 1 ? 'yes' : 'no';
         $product->barcode = $request->barcode;
 
-        // FIX: avoid null image on first insert
-        $product->image = 'default.png';
-
+        // temporary fallback until first uploaded image becomes main image
+        $product->image = '';
         $product->save();
 
         if (!empty($request->sizes)) {
@@ -117,67 +114,66 @@ class ProductController extends Controller
             }
         }
 
-       if (!empty($request->gallery)) {
-    foreach ($request->gallery as $key => $tempImageId) {
-        $tempImage = TempImage::find($tempImageId);
+        if (!empty($request->gallery)) {
+            foreach ($request->gallery as $key => $tempImageId) {
+                $tempImage = TempImage::find($tempImageId);
 
-        if (!$tempImage) {
-            continue;
-        }
+                if (!$tempImage) {
+                    continue;
+                }
 
-        $imagePath = public_path('uploads/temp/' . $tempImage->name);
+                $imagePath = public_path('uploads/temp/' . $tempImage->name);
 
-        if (!file_exists($imagePath)) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Temp image file not found',
-                'error' => $imagePath
-            ], 500);
-        }
+                if (!file_exists($imagePath)) {
+                    return response()->json([
+                        'status' => 500,
+                        'message' => 'Temp image file not found',
+                        'error' => $imagePath
+                    ], 500);
+                }
 
-        try {
-            $uploaded = \CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary::upload(
-                $imagePath,
-                ['folder' => 'products']
-            );
+                try {
+                    $uploaded = Cloudinary::upload($imagePath, [
+                        'folder' => 'products'
+                    ]);
 
-            if (!$uploaded) {
-                return response()->json([
-                    'status' => 500,
-                    'message' => 'Cloudinary upload returned null',
-                ], 500);
+                    if (!$uploaded) {
+                        return response()->json([
+                            'status' => 500,
+                            'message' => 'Cloudinary upload returned null',
+                        ], 500);
+                    }
+
+                    $imageUrl = $uploaded?->getSecurePath();
+
+                    if (!$imageUrl) {
+                        return response()->json([
+                            'status' => 500,
+                            'message' => 'Cloudinary secure URL not found',
+                            'debug' => $uploaded
+                        ], 500);
+                    }
+
+                    $productImage = new ProductImage();
+                    $productImage->image = $imageUrl;
+                    $productImage->product_id = $product->id;
+                    $productImage->save();
+
+                    if ($key == 0) {
+                        $product->image = $imageUrl;
+                        $product->save();
+                    }
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'status' => 500,
+                        'message' => 'Cloudinary upload failed',
+                        'error' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ], 500);
+                }
             }
-
-            $imageUrl = $uploaded->getSecurePath();
-
-            if (!$imageUrl) {
-                return response()->json([
-                    'status' => 500,
-                    'message' => 'Cloudinary secure URL not found',
-                ], 500);
-            }
-
-            $productImage = new ProductImage();
-            $productImage->image = $imageUrl;
-            $productImage->product_id = $product->id;
-            $productImage->save();
-
-            if ($key == 0) {
-                $product->image = $imageUrl;
-                $product->save();
-            }
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Cloudinary upload failed',
-                'error' => $e->getMessage(),
-            ], 500);
         }
-    }
-}
-
-
-
 
         return response()->json([
             'status' => 200,
@@ -301,28 +297,55 @@ class ProductController extends Controller
                     continue;
                 }
 
-                $extArray = explode('.', $tempImage->name);
-                $ext = end($extArray);
+                $imagePath = public_path('uploads/temp/' . $tempImage->name);
 
-                $imageName = $product->id . '-' . time() . '-' . $key . '.' . $ext;
-                $manager = new ImageManager(new Driver());
+                if (!file_exists($imagePath)) {
+                    return response()->json([
+                        'status' => 500,
+                        'message' => 'Temp image file not found',
+                        'error' => $imagePath
+                    ], 500);
+                }
 
-                $img = $manager->read(public_path('uploads/temp/' . $tempImage->name));
-                $img->scaleDown(1200);
-                $img->save(public_path('uploads/products/large/' . $imageName));
+                try {
+                    $uploaded = Cloudinary::upload($imagePath, [
+                        'folder' => 'products'
+                    ]);
 
-                $img = $manager->read(public_path('uploads/temp/' . $tempImage->name));
-                $img->coverDown(400, 460);
-                $img->save(public_path('uploads/products/small/' . $imageName));
+                    if (!$uploaded) {
+                        return response()->json([
+                            'status' => 500,
+                            'message' => 'Cloudinary upload returned null',
+                        ], 500);
+                    }
 
-                $productImage = new ProductImage();
-                $productImage->image = $imageName;
-                $productImage->product_id = $product->id;
-                $productImage->save();
+                    $imageUrl = $uploaded?->getSecurePath();
 
-                if ($key == 0) {
-                    $product->image = $imageName;
-                    $product->save();
+                    if (!$imageUrl) {
+                        return response()->json([
+                            'status' => 500,
+                            'message' => 'Cloudinary secure URL not found',
+                            'debug' => $uploaded
+                        ], 500);
+                    }
+
+                    $productImage = new ProductImage();
+                    $productImage->image = $imageUrl;
+                    $productImage->product_id = $product->id;
+                    $productImage->save();
+
+                    if ($key == 0) {
+                        $product->image = $imageUrl;
+                        $product->save();
+                    }
+                } catch (\Throwable $e) {
+                    return response()->json([
+                        'status' => 500,
+                        'message' => 'Cloudinary upload failed',
+                        'error' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine(),
+                    ], 500);
                 }
             }
         }
@@ -345,31 +368,7 @@ class ProductController extends Controller
         }
 
         if ($product->product_images && $product->product_images->count() > 0) {
-            foreach ($product->product_images as $pimg) {
-                $largePath = public_path('uploads/products/large/' . $pimg->image);
-                $smallPath = public_path('uploads/products/small/' . $pimg->image);
-
-                if (file_exists($largePath)) {
-                    @unlink($largePath);
-                }
-                if (file_exists($smallPath)) {
-                    @unlink($smallPath);
-                }
-            }
-
             $product->product_images()->delete();
-        }
-
-        if (!empty($product->image) && $product->image !== 'default.png') {
-            $largeMain = public_path('uploads/products/large/' . $product->image);
-            $smallMain = public_path('uploads/products/small/' . $product->image);
-
-            if (file_exists($largeMain)) {
-                @unlink($largeMain);
-            }
-            if (file_exists($smallMain)) {
-                @unlink($smallMain);
-            }
         }
 
         ProductSize::where('product_id', $product->id)->delete();
