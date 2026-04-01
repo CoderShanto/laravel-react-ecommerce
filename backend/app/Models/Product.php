@@ -6,10 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
-    // ✅ add discount + computed fields to JSON
     protected $appends = ['image_url', 'final_price'];
 
-    // ✅ allow saving discount from admin panel
     protected $fillable = [
         'title',
         'price',
@@ -28,17 +26,12 @@ class Product extends Model
         'discount_value',
     ];
 
-    // ✅ image url
+    // ✅ FIX: Cloudinary URL (no asset path)
     public function getImageUrlAttribute()
     {
-        if ($this->image == "") {
-            return "";
-        }
-
-        return asset('/uploads/products/small/' . $this->image);
+        return $this->image ?: '';
     }
 
-    // ✅ calculate final price (after discount)
     public function getFinalPriceAttribute()
     {
         $price = (float) $this->price;
@@ -49,14 +42,12 @@ class Product extends Model
 
         if ($this->discount_type === 'percent') {
             $off = ($price * (float) $this->discount_value) / 100;
-            return (float) max(0, $price - $off);
+            return max(0, $price - $off);
         }
 
-        // discount_type === 'amount'
-        return (float) max(0, $price - (float) $this->discount_value);
+        return max(0, $price - (float) $this->discount_value);
     }
 
-    // ✅ relations
     public function product_images()
     {
         return $this->hasMany(ProductImage::class);

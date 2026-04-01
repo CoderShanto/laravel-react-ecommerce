@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\admin;
-
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\TempImage;
@@ -117,41 +117,34 @@ class ProductController extends Controller
             }
         }
 
-        if (!empty($request->gallery)) {
-            foreach ($request->gallery as $key => $tempImageId) {
-                $tempImage = TempImage::find($tempImageId);
+       if (!empty($request->gallery)) {
+    foreach ($request->gallery as $key => $tempImageId) {
 
-                if (!$tempImage) {
-                    continue;
-                }
+        $tempImage = TempImage::find($tempImageId);
+        if (!$tempImage) continue;
 
-                $extArray = explode('.', $tempImage->name);
-                $ext = end($extArray);
+        $imagePath = public_path('uploads/temp/' . $tempImage->name);
 
-                $imageName = $product->id . '-' . time() . '-' . $key . '.' . $ext;
+        // ✅ upload to cloudinary
+        $uploaded = Cloudinary::upload($imagePath, [
+            'folder' => 'products'
+        ]);
 
-                $manager = new ImageManager(new Driver());
+        $imageUrl = $uploaded->getSecurePath();
 
-                $img = $manager->read(public_path('uploads/temp/' . $tempImage->name));
-                $img->scaleDown(1200);
-                $img->save(public_path('uploads/products/large/' . $imageName));
+        // save product image
+        $productImage = new ProductImage();
+        $productImage->image = $imageUrl;
+        $productImage->product_id = $product->id;
+        $productImage->save();
 
-                $img = $manager->read(public_path('uploads/temp/' . $tempImage->name));
-                $img->coverDown(400, 460);
-                $img->save(public_path('uploads/products/small/' . $imageName));
-
-                $productImage = new ProductImage();
-                $productImage->image = $imageName;
-                $productImage->product_id = $product->id;
-                $productImage->save();
-
-                if ($key == 0) {
-                    $product->image = $imageName;
-                    $product->save();
-                }
-            }
+        // set main image
+        if ($key == 0) {
+            $product->image = $imageUrl;
+            $product->save();
         }
-
+    }
+}
         return response()->json([
             'status' => 200,
             'message' => 'Product has been created successfully'
