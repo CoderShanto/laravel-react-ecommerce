@@ -10,7 +10,6 @@ const LatestProducts = ({ limit = 8, title = "New Arrivals" }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-
   // ✅ ratings cache
   const [ratingsMap, setRatingsMap] = useState({});
   const fetchingSetRef = useRef(new Set());
@@ -34,7 +33,10 @@ const LatestProducts = ({ limit = 8, title = "New Arrivals" }) => {
           },
         }));
       } else {
-        setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
+        setRatingsMap((prev) => ({
+          ...prev,
+          [productId]: { avg: 0, total: 0 },
+        }));
       }
     } catch {
       setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
@@ -59,28 +61,39 @@ const LatestProducts = ({ limit = 8, title = "New Arrivals" }) => {
   }, [limit]);
 
   const fetchLatestProducts = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await api.get(`/get-latest-products?limit=${limit}`);
+      const res = await api.get(`/get-latest-products?limit=${limit}`);
 
-    if (res.data?.status === 200) {
-      setProducts(res.data.data || []);
-    } else {
+      if (res.data?.status === 200) {
+        setProducts(res.data.data || []);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error("Error fetching latest products:", error);
       setProducts([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-  } catch (error) {
-    console.error("Error fetching latest products:", error);
-    setProducts([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  // const getProductImage = (product) => {
+  //   if (product?.image) return `${baseUrl}/uploads/products/small/${product.image}`;
+  //   if (product?.image_url) return product.image_url;
+  //   return ProductImg;
+  // };
 
   const getProductImage = (product) => {
-    if (product?.image) return `${baseUrl}/uploads/products/small/${product.image}`;
-    if (product?.image_url) return product.image_url;
+    if (product?.image_url && product.image_url !== "") {
+      return product.image_url;
+    }
+
+    if (product?.image?.startsWith("http")) {
+      return product.image;
+    }
+
     return ProductImg;
   };
 
@@ -115,11 +128,12 @@ const LatestProducts = ({ limit = 8, title = "New Arrivals" }) => {
               if (product.discount_type === "percent") {
                 discountPercentLocal = product.discount_value;
                 discountedPrice =
-                  product.price - product.price * (product.discount_value / 100);
+                  product.price -
+                  product.price * (product.discount_value / 100);
               } else if (product.discount_type === "fixed") {
                 discountedPrice = product.price - product.discount_value;
                 discountPercentLocal = Math.round(
-                  (product.discount_value / product.price) * 100
+                  (product.discount_value / product.price) * 100,
                 );
               }
             }
@@ -134,7 +148,9 @@ const LatestProducts = ({ limit = 8, title = "New Arrivals" }) => {
                   {/* Discount Badge */}
                   {hasDiscountLocal && (
                     <div className="discount-badge">
-                      <span className="discount-percent">{discountPercentLocal}%</span>
+                      <span className="discount-percent">
+                        {discountPercentLocal}%
+                      </span>
                       <span className="discount-text">OFF</span>
                     </div>
                   )}
@@ -172,18 +188,18 @@ const LatestProducts = ({ limit = 8, title = "New Arrivals" }) => {
                         }}
                       >
                         <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
                         <span>View Product</span>
                       </button>
                     </div>
@@ -221,12 +237,18 @@ const LatestProducts = ({ limit = 8, title = "New Arrivals" }) => {
                       <div className="price-wrapper">
                         {hasDiscountLocal ? (
                           <>
-                            <span className="current-price">৳{Number(discountedPrice).toFixed(0)}</span>
-                            <span className="original-price">৳{Number(product.price).toFixed(0)}</span>
+                            <span className="current-price">
+                              ৳{Number(discountedPrice).toFixed(0)}
+                            </span>
+                            <span className="original-price">
+                              ৳{Number(product.price).toFixed(0)}
+                            </span>
                           </>
                         ) : (
                           <>
-                            <span className="current-price">৳{Number(product.price).toFixed(0)}</span>
+                            <span className="current-price">
+                              ৳{Number(product.price).toFixed(0)}
+                            </span>
                             {product.compare_price && (
                               <span className="original-price">
                                 ৳{Number(product.compare_price).toFixed(0)}
