@@ -10,8 +10,6 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-
-
   // ✅ ratings cache
   const [ratingsMap, setRatingsMap] = useState({});
   const fetchingSetRef = useRef(new Set());
@@ -35,7 +33,10 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
           },
         }));
       } else {
-        setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
+        setRatingsMap((prev) => ({
+          ...prev,
+          [productId]: { avg: 0, total: 0 },
+        }));
       }
     } catch {
       setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
@@ -60,28 +61,40 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
   }, [limit]);
 
   const fetchFeaturedProducts = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await api.get(`/get-featured-products?limit=${limit}`);
-    const result = res.data;
+      const res = await api.get(`/get-featured-products?limit=${limit}`);
+      const result = res.data;
 
-    if (result?.status === 200) {
-      setProducts(result.data || []);
-    } else {
+      if (result?.status === 200) {
+        setProducts(result.data || []);
+      } else {
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error("Error fetching featured products:", error);
       setProducts([]);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error("Error fetching featured products:", error);
-    setProducts([]);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  // const getProductImage = (product) => {
+  //   if (product?.image) return `${baseUrl}/uploads/products/small/${product.image}`;
+  //   if (product?.image_url) return product.image_url;
+  //   return ProductImg;
+  // };
 
   const getProductImage = (product) => {
-    if (product?.image) return `${baseUrl}/uploads/products/small/${product.image}`;
-    if (product?.image_url) return product.image_url;
+    if (product?.image_url && product.image_url !== "") {
+      return product.image_url;
+    }
+
+    if (product?.image?.startsWith("http")) {
+      return product.image;
+    }
+
     return ProductImg;
   };
 
@@ -116,11 +129,12 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
               if (product.discount_type === "percent") {
                 discountPercentLocal = product.discount_value;
                 discountedPrice =
-                  product.price - product.price * (product.discount_value / 100);
+                  product.price -
+                  product.price * (product.discount_value / 100);
               } else if (product.discount_type === "fixed") {
                 discountedPrice = product.price - product.discount_value;
                 discountPercentLocal = Math.round(
-                  (product.discount_value / product.price) * 100
+                  (product.discount_value / product.price) * 100,
                 );
               }
             }
@@ -135,7 +149,9 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
                   {/* Discount Badge */}
                   {hasDiscountLocal && (
                     <div className="discount-badge">
-                      <span className="discount-percent">{discountPercentLocal}%</span>
+                      <span className="discount-percent">
+                        {discountPercentLocal}%
+                      </span>
                       <span className="discount-text">OFF</span>
                     </div>
                   )}
@@ -173,18 +189,18 @@ const FeaturedProducts = ({ limit = 8, title = "Featured Products" }) => {
                         }}
                       >
                         <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
                         <span>View Product</span>
                       </button>
                     </div>

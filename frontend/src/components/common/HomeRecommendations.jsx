@@ -15,7 +15,10 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
   const fetchingSetRef = useRef(new Set());
 
   // ✅ derive base url from apiUrl (http://localhost:8000/api -> http://localhost:8000)
-  const baseUrl = (apiUrl || "http://localhost:8000/api").replace(/\/api\/?$/, "");
+  const baseUrl = (apiUrl || "http://localhost:8000/api").replace(
+    /\/api\/?$/,
+    "",
+  );
 
   const fetchRatingSummary = async (productId) => {
     if (!productId) return;
@@ -36,7 +39,10 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
           },
         }));
       } else {
-        setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
+        setRatingsMap((prev) => ({
+          ...prev,
+          [productId]: { avg: 0, total: 0 },
+        }));
       }
     } catch {
       setRatingsMap((prev) => ({ ...prev, [productId]: { avg: 0, total: 0 } }));
@@ -79,25 +85,36 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
   };
 
   // ✅ IMAGE FIX: handle different formats + missing port
+  // const getImage = (p) => {
+  //   if (!p) return ProductImg;
+
+  //   // 1) if api provides image_url
+  //   if (p.image_url) {
+  //     // fix: http://localhost/uploads/... -> http://localhost:8000/uploads/...
+  //     if (p.image_url.startsWith("http://localhost/uploads")) {
+  //       return p.image_url.replace("http://localhost", baseUrl);
+  //     }
+  //     // normalize accidental double slashes
+  //     return p.image_url.replace(/([^:]\/)\/+/g, "$1");
+  //   }
+
+  //   // 2) if api provides only filename in `image`
+  //   if (p.image) {
+  //     return `${baseUrl}/uploads/products/small/${p.image}`;
+  //   }
+
+  //   // 3) fallback
+  //   return ProductImg;
+  // };
   const getImage = (p) => {
-    if (!p) return ProductImg;
-
-    // 1) if api provides image_url
-    if (p.image_url) {
-      // fix: http://localhost/uploads/... -> http://localhost:8000/uploads/...
-      if (p.image_url.startsWith("http://localhost/uploads")) {
-        return p.image_url.replace("http://localhost", baseUrl);
-      }
-      // normalize accidental double slashes
-      return p.image_url.replace(/([^:]\/)\/+/g, "$1");
+    if (p?.image_url && p.image_url !== "") {
+      return p.image_url;
     }
 
-    // 2) if api provides only filename in `image`
-    if (p.image) {
-      return `${baseUrl}/uploads/products/small/${p.image}`;
+    if (p?.image?.startsWith("http")) {
+      return p.image;
     }
 
-    // 3) fallback
     return ProductImg;
   };
 
@@ -116,7 +133,10 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
       if (product.discount_type === "percent") {
         discountPercentLocal = dv;
         discountedPrice = price - price * (dv / 100);
-      } else if (product.discount_type === "fixed" || product.discount_type === "amount") {
+      } else if (
+        product.discount_type === "fixed" ||
+        product.discount_type === "amount"
+      ) {
         discountedPrice = price - dv;
         discountPercentLocal = price > 0 ? Math.round((dv / price) * 100) : 0;
       }
@@ -153,7 +173,8 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
           {items.map((product) => {
             if (!product?.id) return null;
 
-            const { hasDiscountLocal, discountPercentLocal, discountedPrice } = computeDiscount(product);
+            const { hasDiscountLocal, discountPercentLocal, discountedPrice } =
+              computeDiscount(product);
             const r = ratingsMap[product.id] || { avg: 0, total: 0 };
 
             return (
@@ -162,13 +183,17 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
                   {/* Discount Badge */}
                   {hasDiscountLocal && (
                     <div className="discount-badge">
-                      <span className="discount-percent">{discountPercentLocal}%</span>
+                      <span className="discount-percent">
+                        {discountPercentLocal}%
+                      </span>
                       <span className="discount-text">OFF</span>
                     </div>
                   )}
 
                   {/* Hot Deal Badge */}
-                  {hasDiscountLocal && discountPercentLocal >= 30 && <div className="hot-deal-badge">🔥 HOT DEAL</div>}
+                  {hasDiscountLocal && discountPercentLocal >= 30 && (
+                    <div className="hot-deal-badge">🔥 HOT DEAL</div>
+                  )}
 
                   {/* Product Image */}
                   <div className="product-image-wrapper">
@@ -198,18 +223,18 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
                         }}
                       >
                         <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
                         <span>View Product</span>
                       </button>
                     </div>
@@ -247,14 +272,22 @@ const HomeRecommendations = ({ limit = 8, title = "Recommended for you" }) => {
                       <div className="price-wrapper">
                         {hasDiscountLocal ? (
                           <>
-                            <span className="current-price">৳{Number(discountedPrice).toFixed(0)}</span>
-                            <span className="original-price">৳{Number(product.price).toFixed(0)}</span>
+                            <span className="current-price">
+                              ৳{Number(discountedPrice).toFixed(0)}
+                            </span>
+                            <span className="original-price">
+                              ৳{Number(product.price).toFixed(0)}
+                            </span>
                           </>
                         ) : (
                           <>
-                            <span className="current-price">৳{Number(product.price).toFixed(0)}</span>
+                            <span className="current-price">
+                              ৳{Number(product.price).toFixed(0)}
+                            </span>
                             {product.compare_price && (
-                              <span className="original-price">৳{Number(product.compare_price).toFixed(0)}</span>
+                              <span className="original-price">
+                                ৳{Number(product.compare_price).toFixed(0)}
+                              </span>
                             )}
                           </>
                         )}
