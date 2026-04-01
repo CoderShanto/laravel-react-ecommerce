@@ -29,7 +29,7 @@ class ProductController extends Controller
     {
         return new Cloudinary([
             'cloud' => [
-                'cloud_name' => env('Ecommerce'),
+                'cloud_name' => env('dvc10301f'),
                 'api_key'    => env('841858334478494'),
                 'api_secret' => env('2UFkrTyRAcM6W4WUv-K-xYux3Qw'),
             ],
