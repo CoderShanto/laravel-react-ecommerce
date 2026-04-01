@@ -46,8 +46,9 @@ class OrderController extends Controller
         $subtotal = 0;
         $discount = 0;
         // ✅ get latest active shipping charge from DB
-        $shippingRow = Shipping::where('is_active', true)->latest()->first();
-        $shipping = (int) ($shippingRow?->charge ?? 0);
+        // $shippingRow = Shipping::where('is_active', true)->latest()->first();
+        // $shipping = (int) ($shippingRow?->charge ?? 0);
+        $shipping = 0;
 
         foreach ($request->cart as $item) {
             $subtotal += ($item['unit_price'] * $item['qty']);
