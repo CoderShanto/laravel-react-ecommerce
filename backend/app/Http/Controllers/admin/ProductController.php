@@ -100,7 +100,7 @@ class ProductController extends Controller
         $product->description = $request->description;
         $product->short_description = $request->short_description;
         $product->status = $request->status;
-        $product->is_featured = $request->is_featured;
+        $product->is_featured = $request->is_featured == 1 ? 'yes' : 'no';
         $product->barcode = $request->barcode;
 
         // FIX: avoid null image on first insert
@@ -251,7 +251,7 @@ class ProductController extends Controller
         $product->description = $request->description;
         $product->short_description = $request->short_description;
         $product->status = $request->status;
-        $product->is_featured = $request->is_featured;
+        $product->is_featured = $request->is_featured == 1 ? 'yes' : 'no';
         $product->barcode = $request->barcode;
         $product->save();
 
