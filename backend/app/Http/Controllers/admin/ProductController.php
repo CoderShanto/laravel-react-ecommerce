@@ -9,7 +9,7 @@ use App\Models\ProductImage;
 use App\Models\ProductSize;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Cloudinary\Cloudinary;
 
 class ProductController extends Controller
 {
@@ -23,6 +23,35 @@ class ProductController extends Controller
             'status' => 200,
             'data' => $products
         ], 200);
+    }
+
+    private function cloudinaryClient()
+    {
+        return new Cloudinary([
+            'cloud' => [
+                'cloud_name' => env('Ecommerce'),
+                'api_key'    => env('841858334478494'),
+                'api_secret' => env('2UFkrTyRAcM6W4WUv-K-xYux3Qw'),
+            ],
+            'url' => [
+                'secure' => true,
+            ],
+        ]);
+    }
+
+    private function uploadImageToCloudinary($imagePath)
+    {
+        $cloudinary = $this->cloudinaryClient();
+
+        $uploaded = $cloudinary->uploadApi()->upload($imagePath, [
+            'folder' => 'products'
+        ]);
+
+        if (!$uploaded || empty($uploaded['secure_url'])) {
+            throw new \Exception('Cloudinary secure_url missing');
+        }
+
+        return $uploaded['secure_url'];
     }
 
     public function store(Request $request)
@@ -100,8 +129,6 @@ class ProductController extends Controller
         $product->status = $request->status;
         $product->is_featured = $request->is_featured == 1 ? 'yes' : 'no';
         $product->barcode = $request->barcode;
-
-        // temporary fallback until first uploaded image becomes main image
         $product->image = '';
         $product->save();
 
@@ -133,26 +160,7 @@ class ProductController extends Controller
                 }
 
                 try {
-                    $uploaded = Cloudinary::upload($imagePath, [
-                        'folder' => 'products'
-                    ]);
-
-                    if (!$uploaded) {
-                        return response()->json([
-                            'status' => 500,
-                            'message' => 'Cloudinary upload returned null',
-                        ], 500);
-                    }
-
-                    $imageUrl = $uploaded?->getSecurePath();
-
-                    if (!$imageUrl) {
-                        return response()->json([
-                            'status' => 500,
-                            'message' => 'Cloudinary secure URL not found',
-                            'debug' => $uploaded
-                        ], 500);
-                    }
+                    $imageUrl = $this->uploadImageToCloudinary($imagePath);
 
                     $productImage = new ProductImage();
                     $productImage->image = $imageUrl;
@@ -308,26 +316,7 @@ class ProductController extends Controller
                 }
 
                 try {
-                    $uploaded = Cloudinary::upload($imagePath, [
-                        'folder' => 'products'
-                    ]);
-
-                    if (!$uploaded) {
-                        return response()->json([
-                            'status' => 500,
-                            'message' => 'Cloudinary upload returned null',
-                        ], 500);
-                    }
-
-                    $imageUrl = $uploaded?->getSecurePath();
-
-                    if (!$imageUrl) {
-                        return response()->json([
-                            'status' => 500,
-                            'message' => 'Cloudinary secure URL not found',
-                            'debug' => $uploaded
-                        ], 500);
-                    }
+                    $imageUrl = $this->uploadImageToCloudinary($imagePath);
 
                     $productImage = new ProductImage();
                     $productImage->image = $imageUrl;
