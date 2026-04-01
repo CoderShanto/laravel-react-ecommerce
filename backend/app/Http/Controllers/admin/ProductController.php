@@ -10,6 +10,7 @@ use App\Models\ProductSize;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Cloudinary\Cloudinary;
+use Illuminate\Support\Facades\Config;
 
 class ProductController extends Controller
 {
@@ -25,19 +26,33 @@ class ProductController extends Controller
         ], 200);
     }
 
+    // private function cloudinaryClient()
+    // {
+    //     return new Cloudinary([
+    //         'cloud' => [
+    //             'cloud_name' => env('dvc10301f'),
+    //             'api_key'    => env('841858334478494'),
+    //             'api_secret' => env('2UFkrTyRAcM6W4WUv-K-xYux3Qw'),
+    //         ],
+    //         'url' => [
+    //             'secure' => true,
+    //         ],
+    //     ]);
+    // }
+
     private function cloudinaryClient()
-    {
-        return new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('dvc10301f'),
-                'api_key'    => env('841858334478494'),
-                'api_secret' => env('2UFkrTyRAcM6W4WUv-K-xYux3Qw'),
-            ],
-            'url' => [
-                'secure' => true,
-            ],
-        ]);
-    }
+{
+    return new \Cloudinary\Cloudinary([
+        'cloud' => [
+            'cloud_name' => Config::get('services.cloudinary.cloud_name'),
+            'api_key'    => Config::get('services.cloudinary.api_key'),
+            'api_secret' => Config::get('services.cloudinary.api_secret'),
+        ],
+        'url' => [
+            'secure' => true,
+        ],
+    ]);
+}
 
     private function uploadImageToCloudinary($imagePath)
     {
